@@ -2,14 +2,14 @@ Syringe allows a [Pimple](https://github.com/silexphp/pimple) DI container to be
 
 # Installation
 
-``composer require silktide/syringe``
+``composer require lexide/syringe``
 
 # Getting Started
 
-The simplest method to create and set up a new Container is to use the `Silktide\Syringe\Syringe` class. It requires the path to the application directory and a list of filepaths that are relative to that directory
+The simplest method to create and set up a new Container is to use the `Lexide\Syringe\Syringe` class. It requires the path to the application directory and a list of filepaths that are relative to that directory
 
 ```php
-use Silktide\Syringe\Syringe;
+use Lexide\Syringe\Syringe;
 
 $appDir = __DIR__;
 $configFiles = [
@@ -357,9 +357,9 @@ In order to get around this, the `ContainerBuilder` allows you to set a path or 
 
 ```php
 $basePath = "/var/www/app";
-$resolver = new Silktide\Syringe\ReferenceResolver();
+$resolver = new Lexide\Syringe\ReferenceResolver();
 
-$builder = new Silktide\Syringe\ContainerBuilder($resolver, [$basePath]);
+$builder = new Lexide\Syringe\ContainerBuilder($resolver, [$basePath]);
 $builder->addConfigfile("config/syringe.yml");
 ...
 ```
@@ -371,9 +371,9 @@ $basePaths = [
     "my-dir/config",    // both these paths contain a file called "foo.yml"
     "my-dir/app"
 ];
-$resolver = new Silktide\Syringe\ReferenceResolver();
+$resolver = new Lexide\Syringe\ReferenceResolver();
 
-$builder = new Silktide\Syringe\ContainerBuilder($resolver, $basePaths);
+$builder = new Lexide\Syringe\ContainerBuilder($resolver, $basePaths);
 $builder->addConfigfile("foo.yml");     // will load my-dir/config/foo.yml, as that is the first base path in the list
 ```
 
@@ -404,7 +404,7 @@ Syringe can support any data format that can be translated into a nested PHP arr
 By default the `ContainerBuilder` has no loaders, so you need to add at least one before a container can be built:
 
 ```php
-$builder->addLoader(new Silktide\Syringe\Loader\YamlLoader());
+$builder->addLoader(new Lexide\Syringe\Loader\YamlLoader());
 ```
 
 #### Custom loaders
@@ -415,7 +415,7 @@ The translation is done by a `Loader`; a class which takes a filepath, reads the
 To create a `Loader` for your chosen data format, the class needs to implement the `LoaderInterface` and state what its name is and what file extensions it supports. For example, a hypothetical XML `Loader` would look something like this:
 
 ```php
-use Silktide\Syringe\Loader\LoaderInterface;
+use Lexide\Syringe\Loader\LoaderInterface;
 
 class XmlLoader implements LoaderInterface
 {
@@ -453,7 +453,7 @@ The `ContainerBuilder` class has the following methods available:
 
 #### Constructor
 
-* `__construct(Silktide\Syringe\ReferenceResolver $resolver, array $configPaths = [])`
+* `__construct(Lexide\Syringe\ReferenceResolver $resolver, array $configPaths = [])`
   
   Constructs a new `ContainerBuilder` instance, with each $configPath set using the `addConfigPath` method
 
@@ -491,7 +491,7 @@ The `ContainerBuilder` class has the following methods available:
   
 #### Loaders
 
-* `addLoader(Silktide\Syringe\Loader\LoaderInterface $loader)`
+* `addLoader(Lexide\Syringe\Loader\LoaderInterface $loader)`
 
   Registers a loader to add support for a specific data format
 * `removeLoader($name)`
@@ -509,4 +509,4 @@ The `ContainerBuilder` class has the following methods available:
 
 # Credits
 
-Written by Danny Smart (dannysmart@silktide.com).
+Written by Danny Smart (dannysmart@lexide.com).

@@ -1,8 +1,8 @@
 <?php
 
-namespace Silktide\Syringe\Loader;
+namespace Lexide\Syringe\Loader;
 
-use Silktide\Syringe\Exception\LoaderException;
+use Lexide\Syringe\Exception\LoaderException;
 
 /**
  * Load a config file in JSON format
@@ -27,7 +27,7 @@ class PhpLoader implements LoaderInterface {
 
     /**
      * {@inheritDoc}
-     * @throws \Silktide\Syringe\Exception\LoaderException
+     * @throws \Lexide\Syringe\Exception\LoaderException
      */
     public function loadFile($file)
     {

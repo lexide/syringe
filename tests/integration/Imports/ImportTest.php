@@ -1,11 +1,11 @@
 <?php
 
-namespace Silktide\Syringe\IntegrationTests\Imports;
+namespace Lexide\Syringe\IntegrationTests\Imports;
 
-use Silktide\Syringe\ContainerBuilder;
-use Silktide\Syringe\Loader\JsonLoader;
-use Silktide\Syringe\Loader\YamlLoader;
-use Silktide\Syringe\ReferenceResolver;
+use Lexide\Syringe\ContainerBuilder;
+use Lexide\Syringe\Loader\JsonLoader;
+use Lexide\Syringe\Loader\YamlLoader;
+use Lexide\Syringe\ReferenceResolver;
 
 class NamespacingTest extends \PHPUnit_Framework_TestCase
 {

@@ -1,10 +1,10 @@
 <?php
 
-namespace Silktide\Syringe\Tests\Loader;
+namespace Lexide\Syringe\Tests\Loader;
 
-use Silktide\Syringe\ContainerBuilder;
-use Silktide\Syringe\Loader\PhpLoader;
-use Silktide\Syringe\ReferenceResolver;
+use Lexide\Syringe\ContainerBuilder;
+use Lexide\Syringe\Loader\PhpLoader;
+use Lexide\Syringe\ReferenceResolver;
 
 class PhpLoaderTest extends \PHPUnit_Framework_TestCase
 {

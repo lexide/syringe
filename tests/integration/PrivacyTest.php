@@ -1,6 +1,6 @@
 <?php
 
-use Silktide\Syringe\Syringe;
+use Lexide\Syringe\Syringe;
 
 class PrivacyTest extends \PHPUnit_Framework_TestCase
 {
@@ -28,7 +28,7 @@ class PrivacyTest extends \PHPUnit_Framework_TestCase
         if (empty($collection->services)) {
             throw new \Exception("No services were injected using the tag #duds");
         }
-        if (count($collection->services) != 1 || !$collection->services[0] instanceof \Silktide\Syringe\IntegrationTests\Service\DudService) {
+        if (count($collection->services) != 1 || !$collection->services[0] instanceof \Lexide\Syringe\IntegrationTests\Service\DudService) {
             throw new \Exception("An incorrect service was injected: " . print_r($collection->services, true));
         }
 
@@ -41,7 +41,7 @@ class PrivacyTest extends \PHPUnit_Framework_TestCase
         if ($this->container->offsetExists("publicAlias")) {
             throw new \Exception("Aliases should be namespaced where appropriate.");
         }
-        if (!$this->container["private_test.publicAlias"] instanceof \Silktide\Syringe\IntegrationTests\Service\DudConsumer) {
+        if (!$this->container["private_test.publicAlias"] instanceof \Lexide\Syringe\IntegrationTests\Service\DudConsumer) {
             throw new \Exception("Namespaced Alias was not accessible");
         }
 
@@ -52,14 +52,14 @@ class PrivacyTest extends \PHPUnit_Framework_TestCase
         try {
             $service = $this->container["privacyIgnorer"];
             throw new \Exception("Services marked as private should not be accessible from outside of their alias");
-        } catch (\Silktide\Syringe\Exception\ReferenceException $e) {
+        } catch (\Lexide\Syringe\Exception\ReferenceException $e) {
             // expected behaviour
         }
 
         // check private services can be used within the same namespace
         try {
             $service = $this->container["private_test.usesPrivateService"];
-        } catch (\Silktide\Syringe\Exception\ReferenceException $e) {
+        } catch (\Lexide\Syringe\Exception\ReferenceException $e) {
             throw new \Exception("An unexpected ReferenceException was thrown when trying to access a service that uses a private service:\n" . $e->getMessage());
         }
 

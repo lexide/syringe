@@ -1,10 +1,10 @@
 <?php
 
-namespace Silktide\Syringe;
+namespace Lexide\Syringe;
 
 use Pimple\Container;
 use Pimple\ServiceProviderInterface;
-use Silktide\Syringe\ContainerBuilder;
+use Lexide\Syringe\ContainerBuilder;
 
 class SyringeServiceProvider implements ServiceProviderInterface
 {

@@ -1,8 +1,8 @@
 <?php
 
-namespace Silktide\Syringe;
+namespace Lexide\Syringe;
 
-use Silktide\Syringe\Exception\ReferenceException;
+use Lexide\Syringe\Exception\ReferenceException;
 
 class TagCollection
 {

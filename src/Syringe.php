@@ -1,10 +1,10 @@
 <?php
 
-namespace Silktide\Syringe;
+namespace Lexide\Syringe;
 
-use Silktide\Syringe\Loader\JsonLoader;
-use Silktide\Syringe\Loader\PhpLoader;
-use Silktide\Syringe\Loader\YamlLoader;
+use Lexide\Syringe\Loader\JsonLoader;
+use Lexide\Syringe\Loader\PhpLoader;
+use Lexide\Syringe\Loader\YamlLoader;
 
 /**
  * Create Containers from DI configuration

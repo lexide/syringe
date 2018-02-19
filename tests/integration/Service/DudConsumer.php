@@ -1,6 +1,6 @@
 <?php
 
-namespace Silktide\Syringe\IntegrationTests\Service;
+namespace Lexide\Syringe\IntegrationTests\Service;
 
 /**
  * DudConsumer

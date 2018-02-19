@@ -1,6 +1,6 @@
 <?php
 
-namespace Silktide\Syringe;
+namespace Lexide\Syringe;
 
 use Pimple\Container;
 

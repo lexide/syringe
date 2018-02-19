@@ -1,8 +1,8 @@
 {
-  "name": "silktide/syringe",
-  "description": "Silktide Syringe, configuration utility for Pimple",
+  "name": "lexide/syringe",
+  "description": "Lexide Syringe, configuration utility for Pimple",
   "license": "MIT",
-  "homepage": "https://github.com/silktide/syringe",
+  "homepage": "https://github.com/lexide/syringe",
   "require": {
     "php": ">=5.4.0",
     "pimple/pimple": "~3.0",
@@ -13,9 +13,9 @@
   },
   "autoload": {
     "psr-4": {
-      "Silktide\\Syringe\\": "src",
-      "Silktide\\Syringe\\Tests\\": "tests/unit",
-      "Silktide\\Syringe\\IntegrationTests\\": "tests/integration"
+      "Lexide\\Syringe\\": "src",
+      "Lexide\\Syringe\\Tests\\": "tests/unit",
+      "Lexide\\Syringe\\IntegrationTests\\": "tests/integration"
     }
   },
   "suggest": {

@@ -1,6 +1,6 @@
 <?php
 
-namespace Silktide\Syringe\Loader;
+namespace Lexide\Syringe\Loader;
 
 /**
  * Load a configuration file in .ini format

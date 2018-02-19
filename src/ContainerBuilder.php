@@ -1,12 +1,12 @@
 <?php
 
-namespace Silktide\Syringe;
+namespace Lexide\Syringe;
 
 use Pimple\Container;
-use Silktide\Syringe\Exception\ConfigException;
-use Silktide\Syringe\Exception\LoaderException;
-use Silktide\Syringe\Exception\ReferenceException;
-use Silktide\Syringe\Loader\LoaderInterface;
+use Lexide\Syringe\Exception\ConfigException;
+use Lexide\Syringe\Exception\LoaderException;
+use Lexide\Syringe\Exception\ReferenceException;
+use Lexide\Syringe\Loader\LoaderInterface;
 
 /**
  * ContainerBuilder parses configuration files and build a Pimple Container
@@ -295,7 +295,7 @@ class ContainerBuilder {
 
         // add the service locator to the container
         if (!$container->offsetExists("serviceLocator")) {
-            $container["silktide_syringe.serviceLocator"] = function () use ($container) {
+            $container["lexide_syringe.serviceLocator"] = function () use ($container) {
                 return new ServiceLocator($container);
             };
         }

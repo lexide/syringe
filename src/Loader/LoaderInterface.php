@@ -1,6 +1,6 @@
 <?php
 
-namespace Silktide\Syringe\Loader;
+namespace Lexide\Syringe\Loader;
 
 interface LoaderInterface {
 

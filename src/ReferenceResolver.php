@@ -1,10 +1,10 @@
 <?php
 
-namespace Silktide\Syringe;
+namespace Lexide\Syringe;
 
-use Silktide\Syringe\Exception\ConfigException;
+use Lexide\Syringe\Exception\ConfigException;
 use Pimple\Container;
-use Silktide\Syringe\Exception\ReferenceException;
+use Lexide\Syringe\Exception\ReferenceException;
 
 /**
  * Resolves references to existing container definitions
