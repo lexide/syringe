@@ -20,38 +20,30 @@ class PrivacyTest extends \PHPUnit_Framework_TestCase
         $this->container = Syringe::createContainer();
     }
 
-    public function testPrivacy()
+    public function testAliasingAndPrivacy()
     {
-
         $collection = $this->container["tagCollection"];
-
-        if (empty($collection->services)) {
-            throw new \Exception("No services were injected using the tag #duds");
-        }
-        if (count($collection->services) != 1 || !$collection->services[0] instanceof \Lexide\Syringe\IntegrationTests\Service\DudService) {
-            throw new \Exception("An incorrect service was injected: " . print_r($collection->services, true));
-        }
-
         $duds = $this->container["duds"];
-        if ($duds !== $collection) {
-            throw new \Exception("Aliased service did not return the same object as the original service");
-        }
+
+        $this->assertSame($collection, $duds, "Aliased service did not return the same object as the original service");
 
         // check aliases are namespaced
-        if ($this->container->offsetExists("publicAlias")) {
-            throw new \Exception("Aliases should be namespaced where appropriate.");
-        }
-        if (!$this->container["private_test.publicAlias"] instanceof \Lexide\Syringe\IntegrationTests\Service\DudConsumer) {
-            throw new \Exception("Namespaced Alias was not accessible");
-        }
+        $this->assertFalse($this->container->offsetExists("publicAlias"), "Aliases should be namespaced where appropriate.");
+        $this->assertInstanceOf(
+            "\\Lexide\\Syringe\\IntegrationTests\\Service\\DudConsumer",
+            $this->container["private_test.publicAlias"],
+            "Namespaced Alias was not accessible"
+        );
 
         // check private services are hidden
-        if ($this->container->offsetExists("private_test.privateService")) {
-            throw new \Exception("Services marked as private should not be accessible from the container directly");
-        }
+        $this->assertFalse(
+            $this->container->offsetExists("private_test.privateService"),
+            "Services marked as private should not be accessible from the container directly"
+        );
+
         try {
             $service = $this->container["privacyIgnorer"];
-            throw new \Exception("Services marked as private should not be accessible from outside of their alias");
+            $this->fail("Services marked as private should not be accessible from outside of their alias");
         } catch (\Lexide\Syringe\Exception\ReferenceException $e) {
             // expected behaviour
         }
@@ -60,7 +52,7 @@ class PrivacyTest extends \PHPUnit_Framework_TestCase
         try {
             $service = $this->container["private_test.usesPrivateService"];
         } catch (\Lexide\Syringe\Exception\ReferenceException $e) {
-            throw new \Exception("An unexpected ReferenceException was thrown when trying to access a service that uses a private service:\n" . $e->getMessage());
+            $this->fail("An unexpected ReferenceException was thrown when trying to access a service that uses a private service:\n" . $e->getMessage());
         }
 
         // This is a bug. Need to work out how to make aliases respect privacy
