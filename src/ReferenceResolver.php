@@ -177,8 +177,8 @@ class ReferenceResolver implements ReferenceResolverInterface
         }
 
         $services = [];
-        foreach ($collection->getServices() as $serviceName) {
-            $services[] = $container[$serviceName];
+        foreach ($collection->getServices() as $key => $serviceName) {
+            $services[$key] = $container[$serviceName];
         }
 
         return $services;

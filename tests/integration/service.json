@@ -2,6 +2,12 @@
   "services": {
     "tagTest": {
       "class": "Lexide\\Syringe\\IntegrationTests\\Service\\DudService",
+      "tags": {
+        "duds": "testKey"
+      }
+    },
+    "tagTest2": {
+      "class": "Lexide\\Syringe\\IntegrationTests\\Service\\DudService",
       "tags": [
         "duds"
       ]
