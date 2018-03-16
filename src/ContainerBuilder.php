@@ -104,10 +104,17 @@ class ContainerBuilder {
     protected $serviceAliases = [];
 
     /**
+     * @var string
+     */
+    protected $serviceFactoryClass;
+
+    /**
      * @param ReferenceResolverInterface $resolver
      * @param array $configPaths
+     * @param string $serviceFactoryClass
+     * @throws LoaderException
      */
-    public function __construct(ReferenceResolverInterface $resolver, array $configPaths = [])
+    public function __construct(ReferenceResolverInterface $resolver, array $configPaths = [], $serviceFactoryClass = null)
     {
         $this->referenceResolver = $resolver;
 
@@ -115,6 +122,8 @@ class ContainerBuilder {
         foreach ($configPaths as $path) {
             $this->addConfigPath($path);
         }
+
+        $this->serviceFactoryClass = empty($serviceFactoryClass)? __NAMESPACE__ . "\\ServiceFactory": $serviceFactoryClass;
     }
 
     public function setContainerClass($containerClass)
@@ -263,10 +272,8 @@ class ContainerBuilder {
      */
     public function populateContainer(Container $container)
     {
-        // setup the service factory if necessary
-        if (empty($this->serviceFactory)) {
-            $this->serviceFactory = new ServiceFactory($container, $this->referenceResolver);
-        }
+        // setup the service factory
+        $this->serviceFactory = new $this->serviceFactoryClass($container, $this->referenceResolver);
 
         $aliases = array_keys($this->configFiles);
         $this->referenceResolver->setRegisteredAliases($aliases);
@@ -496,6 +503,13 @@ class ContainerBuilder {
             // check if this is an alias of another service
             if (!$this->referenceResolver->keyIsAliased($key)) {
                 $key = $this->referenceResolver->aliasThisKey($key, $alias);
+            }
+
+            if (!empty($definition["stub"])) {
+                $container[$key] = function() use ($key, $definition) {
+                    return $this->serviceFactory->createStub($key, $definition);
+                };
+                continue;
             }
 
             if (!empty($definition["aliasOf"])) {
