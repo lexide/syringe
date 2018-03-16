@@ -505,6 +505,13 @@ class ContainerBuilder {
                 $key = $this->referenceResolver->aliasThisKey($key, $alias);
             }
 
+            if (!empty($definition["stub"])) {
+                $container[$key] = function() use ($key, $definition) {
+                    return $this->serviceFactory->createStub($key, $definition);
+                };
+                continue;
+            }
+
             if (!empty($definition["aliasOf"])) {
                 // override any existing definitions for this key
                 $aliasedService = $definition["aliasOf"];
