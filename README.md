@@ -242,6 +242,41 @@ services:
 
 Private services will only be available to other services that are defined with the same config alias, usually within the same module.
 
+### Stubbed Services
+
+In some cases, you may require an application or external library to inject a service that you don't have information on, such as a plugin or adapter that has functionality that doesn't belong in your library.
+
+In order for syringe to handle these situations, you should create a stub service to act as a placeholder which can be aliased later.
+These serve as a hook or API for other libraries to interact with your code through Syringe.
+
+```yml
+# library A
+services:
+
+    # This service uses the "adapterService" stub
+    aService:
+        ...
+        arguments:
+            - "@adapterService"
+
+    adapterService:
+        stub: true
+        
+
+# library B
+services:
+
+    myAdapter:
+        ...
+        
+    # alias "myAdapter" to be the service injected into "library_a.aService"
+    library_a.adapterService:
+        aliasOf: "@myAdapter"
+        
+```
+
+By themselves, stub services cannot be accessed or injected; they must have been aliased before the service that uses them can be created.  
+
 ## Imports
 
 When your object graph becomes large enough, it is often useful to split your configuration into separate files; keeping related parameters and services together. This can be done by using the `imports` key:

@@ -17,7 +17,7 @@ class ServiceFactory implements ServiceFactoryInterface
     protected $container;
 
     /**
-     * @var ReferenceResolverInterface 
+     * @var ReferenceResolverInterface
      */
     protected $resolver;
 
