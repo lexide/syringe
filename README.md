@@ -43,7 +43,22 @@ parameters:
     fullName: "%firstName% %lastName%"
 ```
 
-Parameters can have any scalar or array value.
+Parameters can have any scalar or array value. Arrays are resolved recursively; you can set an array of strings to a 
+parameter, each of which contain references to other parameters. This works for both values and array keys.
+ 
+```yml
+parameters:
+    myFirstValue: "first"
+    mySecondValue: "second"
+
+    myList:
+        - "The first value is %myFirstValue%"
+        - "The second value is %mySecondValue%
+        
+    myHash:
+        "%myFirstValue%": "%mySecondValue%"
+```
+
 
 ## Constants
 
