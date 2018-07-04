@@ -89,8 +89,11 @@ class ReferenceResolver implements ReferenceResolverInterface
         if (is_array($arg)) {
             // check each element and key for parameters
             foreach ($arg as $key => $value) {
-                $key = $this->resolveParameter($key, $container, $alias);
-                $arg[$key] = $this->resolveParameter($value, $container, $alias);
+                $resolvedKey = $this->resolveParameter($key, $container, $alias);
+                $arg[$resolvedKey] = $this->resolveParameter($value, $container, $alias);
+                if ($key != $resolvedKey) {
+                    unset($arg[$key]);
+                }
             }
         }
         if (!is_string($arg)) {
