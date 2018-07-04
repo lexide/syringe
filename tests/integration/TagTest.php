@@ -30,14 +30,20 @@ class TagTest extends \PHPUnit_Framework_TestCase
         $collection = $this->container["tagCollection"];
 
         $this->assertNotEmpty($collection->services, "No services were injected using the tag #duds");
-        $this->assertCount(2, $collection->services, "Tag collection contained an unexpected number of services (" . count($collection->services) . ")");
+        $this->assertCount(5, $collection->services, "Tag collection contained an unexpected number of services (" . count($collection->services) . ")");
 
         $tagNames = array_flip(array_keys($collection->services));
 
-        $this->assertArrayHasKey("testKey", $tagNames, "Name was missing from the tagged service");
+        $this->assertArrayHasKey("testKey", $tagNames, "Name 'testKey' was missing from the tagged service");
+        $this->assertArrayHasKey(0, $tagNames, "Index 0 was missing from the tagged service");
+        $this->assertArrayHasKey(10, $tagNames, "Index 10 was missing from the tagged service");
+        $this->assertArrayHasKey(11, $tagNames, "Index 11 was missing from the tagged service");
+        $this->assertArrayHasKey(12, $tagNames, "Index 12 was missing from the tagged service");
+
 
         unset($tagNames["testKey"]);
-        $unnamedKey = array_pop($tagNames);
+        end($tagNames);
+        $unnamedKey = key($tagNames);
 
         $this->assertNotFalse($unnamedKey, "Unnamed service was not injected");
 

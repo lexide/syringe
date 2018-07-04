@@ -10,8 +10,15 @@ class TagCollection
 
     public function addService($serviceName, $key = null)
     {
-        if (!is_string($key) || empty($key)) {
-            $key = count($this->services);
+        if ((is_int($key) && !empty($this->services[$key])) || (empty($key) && $key !== 0)) {
+            $key = empty($this->services)
+                ? 0
+                : array_reduce(array_keys($this->services), function ($result, $value) {
+                    if (is_int($value) && $value > $result) {
+                        return $value;
+                    }
+                    return $result;
+                }, -1) + 1;
         }
         $this->services[$key] = $serviceName;
     }

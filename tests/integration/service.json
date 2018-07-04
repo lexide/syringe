@@ -12,6 +12,24 @@
         "duds"
       ]
     },
+    "tagTest3": {
+      "class": "Lexide\\Syringe\\IntegrationTests\\Service\\DudService",
+      "tags": {
+        "duds": 10
+      }
+    },
+    "tagTest4": {
+      "class": "Lexide\\Syringe\\IntegrationTests\\Service\\DudService",
+      "tags": [
+        "duds"
+      ]
+    },
+    "tagTest5": {
+      "class": "Lexide\\Syringe\\IntegrationTests\\Service\\DudService",
+      "tags": {
+        "duds": 10
+      }
+    },
     "tagCollection": {
       "class": "Lexide\\Syringe\\IntegrationTests\\Service\\CollectionService",
       "arguments": [
