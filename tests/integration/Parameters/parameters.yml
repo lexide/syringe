@@ -1,0 +1,11 @@
+parameters:
+
+  listTest:
+    - "%test1%"
+    - "%test2%"
+    - "%test3%"
+    - "%test4%"
+
+  hashTest:
+    "%prefix%%test1%": "%test2%"
+    "%prefix%%test3%": "%test4%"
