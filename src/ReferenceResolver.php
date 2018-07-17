@@ -149,7 +149,7 @@ class ReferenceResolver implements ReferenceResolverInterface
                 if (strpos($constantRef, "::") !== false) {
                     $exploded = explode("::", $constantRef);
                     $className = $exploded[0];
-                    if (!class_exists($className)) {
+                    if (!class_exists($className) && !interface_exists($className)) {
                         throw new ReferenceException("Referenced class '{$className}' doesn't exist");
                     }
                 }
