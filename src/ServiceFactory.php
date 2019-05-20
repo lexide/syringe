@@ -96,7 +96,7 @@ class ServiceFactory implements ServiceFactoryInterface
         $finalArgs = [];
         foreach ($arguments as $key => $value) {
             // resolve the key for parameters
-            $key = $this->resolver->resolveParameter($key, $alias);
+            $key = $this->resolver->resolveParameter($key, $this->container, $alias);
 
             // resolve the value for services, parameters or tags)
             $value = $this->resolver->resolveService($value, $this->container, $alias);
