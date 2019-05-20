@@ -98,10 +98,15 @@ class ServiceFactory implements ServiceFactoryInterface
             // resolve the key for parameters
             $key = $this->resolver->resolveParameter($key, $this->container, $alias);
 
-            // resolve the value for services, parameters or tags)
-            $value = $this->resolver->resolveService($value, $this->container, $alias);
-            $value = $this->resolver->resolveParameter($value, $this->container, $alias);
-            $value = $this->resolver->resolveTag($value, $this->container);
+            if (is_array($value)) {
+                $value = $this->resolveArguments($value, $alias);
+            } else {
+                // resolve the value for services, parameters or tags)
+                $value = $this->resolver->resolveService($value, $this->container, $alias);
+                $value = $this->resolver->resolveParameter($value, $this->container, $alias);
+                $value = $this->resolver->resolveTag($value, $this->container);
+            }
+
             $finalArgs[$key] = $value;
         }
         return $finalArgs;
