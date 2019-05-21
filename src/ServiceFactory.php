@@ -93,27 +93,23 @@ class ServiceFactory implements ServiceFactoryInterface
 
     protected function resolveArguments(array $arguments, $alias)
     {
-        $userData = ["container" => $this->container, "resolver" => $this->resolver, "alias" => $alias];
-        array_walk_recursive(
-            $arguments,
-            [$this, "resolveArgument"],
-            $userData
-        );
-        return $arguments;
-    }
+        $finalArgs = [];
+        foreach ($arguments as $key => $value) {
+            // resolve the key for parameters
+            $key = $this->resolver->resolveParameter($key, $this->container, $alias);
 
-    private function resolveArgument(&$argument, $key, array $userData)
-    {
-        if (!is_string($argument)) {
-            return;
+            if (is_array($value)) {
+                $value = $this->resolveArguments($value, $alias);
+            } else {
+                // resolve the value for services, parameters or tags)
+                $value = $this->resolver->resolveService($value, $this->container, $alias);
+                $value = $this->resolver->resolveParameter($value, $this->container, $alias);
+                $value = $this->resolver->resolveTag($value, $this->container);
+            }
+
+            $finalArgs[$key] = $value;
         }
-        $c = $userData["container"];
-        /** @var ReferenceResolverInterface $resolver */
-        $resolver = $userData["resolver"];
-        $alias = $userData["alias"];
-        $argument = $resolver->resolveService($argument, $c, $alias);
-        $argument = $resolver->resolveParameter($argument, $c, $alias);
-        $argument = $resolver->resolveTag($argument, $c);
+        return $finalArgs;
     }
 
 } 
