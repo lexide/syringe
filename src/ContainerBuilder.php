@@ -638,6 +638,9 @@ class ContainerBuilder {
             
             // arguments
             $arguments = !empty($definition["arguments"])? $definition["arguments"]: [];
+            if (!is_array($arguments)) {
+                throw new ConfigException(sprintf("Error for service '%s': The defined arguments are not in array format", $key));
+            }
 
             // calls / setters
             $calls = !empty($definition["calls"])? $definition["calls"]: [];
