@@ -2,11 +2,11 @@
 
 namespace Lexide\Syringe;
 
-use Pimple\Container;
 use Lexide\Syringe\Exception\ConfigException;
 use Lexide\Syringe\Exception\LoaderException;
 use Lexide\Syringe\Exception\ReferenceException;
 use Lexide\Syringe\Loader\LoaderInterface;
+use Pimple\Container;
 
 /**
  * ContainerBuilder parses configuration files and build a Pimple Container
@@ -126,6 +126,10 @@ class ContainerBuilder {
         $this->serviceFactoryClass = empty($serviceFactoryClass)? __NAMESPACE__ . "\\ServiceFactory": $serviceFactoryClass;
     }
 
+    /**
+     * @param $containerClass
+     * @throws ConfigException
+     */
     public function setContainerClass($containerClass)
     {
         // check existence
@@ -210,6 +214,11 @@ class ContainerBuilder {
         }
     }
 
+    /**
+     * @param $directory
+     * @param string $key
+     * @throws ConfigException
+     */
     public function setApplicationRootDirectory($directory, $key = "")
     {
         if (!is_dir($directory)) {
@@ -223,6 +232,11 @@ class ContainerBuilder {
         $this->applicationRootDirectoryKey = $key;
     }
 
+    /**
+     * @param $file
+     * @return string
+     * @throws LoaderException
+     */
     protected function findConfigFile($file)
     {
         foreach ($this->configPaths as $path) {
@@ -234,9 +248,16 @@ class ContainerBuilder {
         throw new LoaderException(sprintf("The config file '%s' does not exist in any of the configured paths", $file));
     }
 
-    protected function findImportedConfigFile($file, $dir)
+    /**
+     * @param $file
+     * @param $dir
+     * @param $relativeDir
+     * @return string
+     * @throws LoaderException
+     */
+    protected function findImportedConfigFile($file, $dir, $relativeDir)
     {
-        $filePath = $dir . "/" . $file;
+        $filePath = $dir . DIRECTORY_SEPARATOR . $relativeDir . DIRECTORY_SEPARATOR . $file;
         if (file_exists($filePath)) {
             return $filePath;
         }
@@ -245,6 +266,7 @@ class ContainerBuilder {
 
     /**
      * @param array $files
+     * @throws LoaderException
      */
     public function addConfigFiles(array $files)
     {
@@ -256,8 +278,11 @@ class ContainerBuilder {
 
     /**
      * @return Container
+     * @throws ConfigException
+     * @throws LoaderException
+     * @throws ReferenceException
      */
-    public function createContainer()
+    public function  createContainer()
     {
         $container = new $this->containerClass();
         $this->populateContainer($container);
@@ -378,12 +403,14 @@ class ContainerBuilder {
      *
      * @param array $config
      * @param $importDir
+     * @param null $relativeDir
      * @return array
+     * @throws LoaderException
      */
-    protected function processImports(array $config, $importDir)
+    protected function processImports(array $config, $importDir, $relativeDir = '.')
     {
         if (isset($config["inherit"])) {
-            $filePath = $this->findImportedConfigFile($config["inherit"], $importDir);
+            $filePath = $this->findImportedConfigFile($config["inherit"], $importDir, '.');
             $inheritedConfig = $this->loadConfig($filePath);
             // check for recursive imports or inheritance
             $inheritedConfig = $this->processImports($inheritedConfig, $importDir);
@@ -391,10 +418,10 @@ class ContainerBuilder {
         }
         if (isset($config["imports"]) && is_array($config["imports"])) {
             foreach ($config["imports"] as $file) {
-                $filePath = $this->findImportedConfigFile($file, $importDir);
+                $filePath = $this->findImportedConfigFile($file, $importDir, $relativeDir);
                 $importConfig = $this->loadConfig($filePath);
                 // check for recursive imports or inheritance
-                $importConfig = $this->processImports($importConfig, $importDir);
+                $importConfig = $this->processImports($importConfig, $importDir, dirname($file));
                 $config = array_replace_recursive($config, $importConfig);
             }
         }
@@ -404,7 +431,6 @@ class ContainerBuilder {
 
     /**
      * @param Container $container
-     * @return mixed
      */
     protected function processEnvironment(Container $container)
     {
@@ -678,6 +704,12 @@ class ContainerBuilder {
         }
     }
 
+    /**
+     * @param array $config
+     * @param Container $container
+     * @param $alias
+     * @throws ConfigException
+     */
     protected function processExtensions(array $config, Container $container, $alias)
     {
         $extensions = !empty($config["extensions"])? $config["extensions"]: [];
@@ -704,6 +736,14 @@ class ContainerBuilder {
         }
     }
 
+    /**
+     * @param $call
+     * @param $i
+     * @param $key
+     * @param string $class
+     * @return mixed
+     * @throws ConfigException
+     */
     protected function processCall($call, $i, $key, $class = "")
     {
         if (empty($call["method"])) {

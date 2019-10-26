@@ -2,6 +2,7 @@
 
 namespace Lexide\Syringe;
 
+use Lexide\Syringe\Exception\ReferenceException;
 use Pimple\Container;
 
 /**
@@ -25,6 +26,7 @@ interface ReferenceResolverInterface {
      * @param $arg
      * @param Container $container
      * @param string $alias
+     * @throws ReferenceException
      * @return mixed
      */
     public function resolveParameter($arg, Container $container, $alias = "");

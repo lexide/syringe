@@ -2,23 +2,36 @@
 
 namespace Lexide\Syringe\IntegrationTests\Imports;
 
-use Lexide\Syringe\ContainerBuilder;
-use Lexide\Syringe\Loader\JsonLoader;
-use Lexide\Syringe\Loader\YamlLoader;
-use Lexide\Syringe\ReferenceResolver;
+use org\bovigo\vfs\vfsStream;
+use Symfony\Component\Yaml\Yaml;
 
-class NamespacingTest extends \PHPUnit_Framework_TestCase
+class ImportTest extends AbstractImportTestConfigurer
 {
+    /**
+     * @throws \Lexide\Syringe\Exception\ConfigException
+     * @throws \Lexide\Syringe\Exception\LoaderException
+     * @throws \Lexide\Syringe\Exception\ReferenceException
+     */
     public function testParameterImports()
     {
-        $resolver = new ReferenceResolver();
-        $builder = new ContainerBuilder($resolver);
-        $builder->addLoader(new YamlLoader());
-        $builder->addConfigPath(__DIR__);
-        $builder->addConfigFiles([
-            "base.yml"
-        ]);
-        $container = $builder->createContainer();
-        $this->assertEquals("bar", $container["foo"]);
+        $keyToCheck = "thisKeyShouldBePresent";
+        $baseConfigFile = 'base.yml';
+        $importConfigFile = "imported.yml";
+        $baseConfigContents = Yaml::dump(['imports' => [$importConfigFile]]);
+        $importConfigContents = Yaml::dump(['parameters'=> [$keyToCheck => true]]);
+
+        vfsStream::create(
+            [
+                $baseConfigFile => $baseConfigContents,
+                $importConfigFile => $importConfigContents
+            ],
+            $this->configDirectory
+        );
+
+        $this->builder->addConfigFiles([$baseConfigFile]);
+
+        $container = $this->builder->createContainer();
+
+        $this->assertArrayHasKey($keyToCheck, $container);
     }
 }
