@@ -292,7 +292,7 @@ class ContainerBuilder {
      * @throws LoaderException
      * @throws ReferenceException
      */
-    public function  createContainer()
+    public function createContainer()
     {
         $container = new $this->containerClass();
         $this->populateContainer($container);
