@@ -258,7 +258,7 @@ class ContainerBuilder {
     protected function findImportedConfigFile($file, $dir, $relativeDir)
     {
         $relativeFilePath = $dir . DIRECTORY_SEPARATOR . $relativeDir . DIRECTORY_SEPARATOR . $file;
-        $rootFilePath = $dir . DIRECTORY_SEPARATOR . DIRECTORY_SEPARATOR . $file;
+        $rootFilePath = $dir . DIRECTORY_SEPARATOR . $file;
         if (file_exists($relativeFilePath)) {
             return $relativeFilePath;
         } elseif (file_exists($rootFilePath)) {
