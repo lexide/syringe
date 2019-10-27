@@ -257,11 +257,21 @@ class ContainerBuilder {
      */
     protected function findImportedConfigFile($file, $dir, $relativeDir)
     {
-        $filePath = $dir . DIRECTORY_SEPARATOR . $relativeDir . DIRECTORY_SEPARATOR . $file;
-        if (file_exists($filePath)) {
-            return $filePath;
+        $relativeFilePath = $dir . DIRECTORY_SEPARATOR . $relativeDir . DIRECTORY_SEPARATOR . $file;
+        $rootFilePath = $dir . DIRECTORY_SEPARATOR . DIRECTORY_SEPARATOR . $file;
+        if (file_exists($relativeFilePath)) {
+            return $relativeFilePath;
+        } elseif (file_exists($rootFilePath)) {
+            return $rootFilePath;
         }
-        throw new LoaderException(sprintf("The import file '%s' does not exist in the directory '%s'", $file, $dir));
+        throw new LoaderException(
+            sprintf(
+                "The import file '%s' does not exist in the directories: '%s', '%s'",
+                $file,
+                dirname($relativeFilePath),
+                dirname($rootFilePath)
+            )
+        );
     }
 
     /**
