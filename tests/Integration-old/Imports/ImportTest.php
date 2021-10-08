@@ -1,6 +1,6 @@
 <?php
 
-namespace Lexide\Syringe\IntegrationTests\Imports;
+namespace Lexide\Syringe\Test\Integration\Imports;
 
 use org\bovigo\vfs\vfsStream;
 use Symfony\Component\Yaml\Yaml;

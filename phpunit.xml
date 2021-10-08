@@ -1,8 +1,8 @@
 <?xml version="1.0" encoding="utf-8"?>
-<phpunit bootstrap="tests/bootstrap.php" >
+<phpunit bootstrap="vendor/autoload.php" >
     <testsuites>
         <testsuite name="unit-tests">
-            <directory suffix=".php">tests/unit</directory>
+            <directory suffix=".php">tests/Unit</directory>
             <exclude>tests/bootstrap.php</exclude>
         </testsuite>
         <testsuite name="integration-tests">

@@ -1,19 +1,19 @@
 <?php
 
-namespace Lexide\Syringe\IntegrationTests;
+namespace Lexide\Syringe\Test\Integration;
 
-
-use Lexide\Syringe\IntegrationTests\Service\CollectionService;
+use Lexide\Syringe\Integration\Service\CollectionService;
 use Lexide\Syringe\Syringe;
+use PHPUnit\Framework\TestCase;
 
-class TagTest extends \PHPUnit_Framework_TestCase
+class TagTest extends TestCase
 {
     /**
      * @var \Pimple\Container
      */
     protected $container;
 
-    public function setUp()
+    public function setUp(): void
     {
         $configFiles = [
             "service.json",

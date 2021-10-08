@@ -1,6 +1,6 @@
 <?php
 
-namespace Lexide\Syringe\IntegrationTests\Service;
+namespace Lexide\Syringe\Test\Integration\Service;
 
 class CollectionService
 {

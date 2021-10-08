@@ -1,14 +1,13 @@
 <?php
 
-namespace Lexide\Syringe\IntegrationTests\Imports;
+namespace Lexide\Syringe\Test\Integration\Imports;
 
 use org\bovigo\vfs\vfsStream;
 use Symfony\Component\Yaml\Yaml;
 
-class RelativeImportFallbackTest extends AbstractImportTestConfigurer
+class RelativeImportTest extends AbstractImportTestConfigurer
 {
     /**
-     * Following relative import change this test ensures we maintain BC to previous functionality
      * @throws \Lexide\Syringe\Exception\ConfigException
      * @throws \Lexide\Syringe\Exception\LoaderException
      * @throws \Lexide\Syringe\Exception\ReferenceException
@@ -17,8 +16,8 @@ class RelativeImportFallbackTest extends AbstractImportTestConfigurer
     {
         $keyToCheck = "thisKeyShouldBePresent";
 
-        $importInBaseConfigFile = 'importInBase.yml';
-        $importInBaseConfigContents = Yaml::dump(
+        $relativeImportConfigFile = 'relativeImport.yml';
+        $relativeImportConfigContents = Yaml::dump(
             [
                 'parameters' => [
                     $keyToCheck => true
@@ -31,7 +30,7 @@ class RelativeImportFallbackTest extends AbstractImportTestConfigurer
         $importConfigContents = Yaml::dump(
             [
                 'imports' => [
-                    $importInBaseConfigFile
+                    $relativeImportConfigFile
                 ]
             ]
         );
@@ -48,9 +47,9 @@ class RelativeImportFallbackTest extends AbstractImportTestConfigurer
         vfsStream::create(
             [
                 $baseConfigFile => $baseConfigContents,
-                $importInBaseConfigFile => $importInBaseConfigContents,
                 $importConfigFolder => [
-                    $importConfigFile => $importConfigContents
+                    $importConfigFile => $importConfigContents,
+                    $relativeImportConfigFile => $relativeImportConfigContents
                 ]
             ],
             $this->configDirectory

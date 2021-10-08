@@ -1,18 +1,18 @@
 <?php
 
-namespace Lexide\Syringe\IntegrationTests\Parameters;
-
+namespace Lexide\Syringe\Test\Integration\Parameters;
 
 use Lexide\Syringe\Syringe;
+use PHPUnit\Framework\TestCase;
 
-class ParametersTest extends \PHPUnit_Framework_TestCase
+class ParametersTest extends TestCase
 {
     /**
      * @var \Pimple\Container
      */
     protected $container;
 
-    public function setUp()
+    public function setUp(): void
     {
         $configFiles = [
             "parameters.yml"

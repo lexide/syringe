@@ -1,15 +1,16 @@
 <?php
 
-use Lexide\Syringe\Syringe;
+use Lexide\Syringe\Test\Integration;
+use PHPUnit\Framework\TestCase;
 
-class PrivacyTest extends \PHPUnit_Framework_TestCase
+class PrivacyTest extends TestCase
 {
     /**
      * @var \Pimple\Container
      */
     protected $container;
 
-    public function setUp()
+    public function setUp(): void
     {
         $configFiles = [
             "service.json",
