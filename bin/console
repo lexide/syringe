@@ -1,0 +1,19 @@
+#!/usr/bin/env php
+<?php
+$rootDir = dirname(__DIR__);
+
+include_once("$rootDir/vendor/autoload.php");
+
+use Lexide\Syringe\Command\SchemaLintCommand;
+use Lexide\Syringe\Schema\SchemaLinter;
+
+// linter
+$schemaPath = "$rootDir/config/schema.yml";
+
+$linter = new SchemaLinter();
+$lintCommand = new SchemaLintCommand($schemaPath, $linter);
+
+$app = new \Symfony\Component\Console\Application("Syringe dev tools", "1.0");
+$app->add($lintCommand);
+
+$app->run();
