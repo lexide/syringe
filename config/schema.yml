@@ -1,0 +1,139 @@
+schemas:
+  syringe:
+    type: "object"
+    children:
+      imports:
+        type: "list"
+        empty: false
+        element:
+          type: "string"
+      parameters:
+        type: "object"
+        element:
+          type: "any"
+      services:
+        type: "object"
+        element:
+          type: "@service"
+      extensions:
+        type: "object"
+        empty: false
+        element:
+          oneOf:
+            - type: "object"
+              empty: false
+              children:
+                calls:
+                  type: "@calls"
+                tags:
+                  type: "@tags"
+            - type: "list"
+              warning: "The use of numeric arrays for extension calls is deprecated. Please prefix with the 'calls' key"
+              empty: false
+              element:
+                type: "@call"
+  service:
+    type: "object"
+    requiredChildren:
+      class:
+        ifNot:
+          - "abstract"
+          - "stub"
+      factoryMethod:
+        if:
+          - "factoryService"
+          - "factoryClass"
+    children:
+      class:
+        type: "string"
+        empty: false
+      arguments:
+        type: "@arguments"
+      calls:
+        type: "@calls"
+      tags:
+        type: "@tags"
+      factoryService:
+        type: "serviceReference"
+      factoryClass:
+        type: "string"
+        empty: false
+      factoryMethod:
+        type: "string"
+        empty: false
+      abstract:
+        type: "bool"
+      extends:
+        type: "serviceReference"
+      stub:
+        type: "bool"
+      aliasOf:
+        type: "serviceReference"
+      private:
+        type: "bool"
+  arguments:
+    oneOf:
+      - type: "list"
+        empty: false
+        element:
+          type: "any"
+      - type: "object"
+        warning: "The use of named arguments is not recommended"
+        empty: false
+        element:
+          type: "any"
+      - type: "array"
+        warning: "The use of named arguments is not recommended"
+        empty: false
+        element:
+          type: "any"
+  calls:
+    oneOf:
+      - type: "list"
+        element:
+          type: "@call"
+      - type: "object"
+        warning: "The use of named calls is not recommended"
+        element:
+          type: "@call"
+  call:
+    type: "object"
+    requiredChildren:
+      method: true
+    children:
+      method:
+        type: "string"
+      arguments:
+        type: "@arguments"
+  tags:
+    oneOf:
+      - type: "list"
+        empty: false
+        element:
+          oneOf:
+            - type: "string"
+            - type: "object"
+              requiredChildren:
+                tag: true
+              children:
+                tag:
+                  type: "string"
+                name:
+                  type: "string"
+                order:
+                  type: "number"
+                context:
+                  type: "object"
+                  empty: false
+                  element:
+                    type:
+                      - "string"
+                      - "number"
+                      - "bool"
+      - type: "object"
+        warning: "Using key/value tag definitions is deprecated. Please use a list of objects with 'name' or 'order' keys if you need to add context to a tag"
+        element:
+          type:
+            - "string"
+            - "number"
+
