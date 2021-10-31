@@ -106,6 +106,7 @@ class SyntaxValidator
                         break;
                     }
 
+                    $childList = array_flip(array_keys($definition));
                     foreach ($directive as $child => $childSchema) {
                         if (isset($definition[$child])) {
                             // validate the child definition
@@ -119,7 +120,17 @@ class SyntaxValidator
                                 )
                             );
                         }
+                        unset($childList[$child]);
                     }
+
+                    if (!empty($childList)) {
+                        $errors[] = $this->syntaxError(
+                            "'$elementPath' contains child elements that are not allowed: '"
+                                . implode("', '", $childList) . "'",
+                            $fileName
+                        );
+                    }
+
                     break;
 
                 // validate each element in the definition list

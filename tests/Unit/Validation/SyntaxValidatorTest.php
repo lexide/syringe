@@ -107,6 +107,34 @@ class SyntaxValidatorTest extends TestCase
         $this->standardTest($schemas, $definition, 3);
     }
 
+    public function testExtraChildrenValidationFailure()
+    {
+        $schemas = [
+            "syringe" => [
+                "children" => [
+                    "one" => [
+                        "type" => "string"
+                    ],
+                    "two" => [
+                        "type" => "number"
+                    ],
+                    "three" => [
+                        "type" => "bool"
+                    ]
+                ]
+            ]
+        ];
+
+        $definition = [
+            "one" => "foo",
+            "two" => 12345,
+            "three" => false,
+            "four" => "bar"
+        ];
+
+        $this->standardTest($schemas, $definition, 1);
+    }
+
     public function testElementValidationSuccess()
     {
         $schemas = [
