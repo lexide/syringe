@@ -529,7 +529,7 @@ class ContainerBuilder {
         foreach ($config["services"] as $key => $definition) {
 
             if (!empty($definition["abstract"])) {
-                $this->abstractDefinitions[self::SERVICE_CHAR . $this->referenceResolver->aliasThisKey($key, $alias)] = $definition;
+                $this->abstractDefinitions[$this->referenceResolver->aliasThisKey($key, $alias)] = $definition;
                 unset ($config["services"][$key]);
             }
         }
@@ -576,7 +576,10 @@ class ContainerBuilder {
             $currentIterations = 0;
             // check if this definition extends an abstract one
             while (!empty($definition["extends"]) && $currentIterations < $maxIterations) {
-                $extends = self::SERVICE_CHAR . $this->referenceResolver->aliasThisKey(ltrim($definition["extends"], self::SERVICE_CHAR), $alias);
+                $extends = ltrim($definition["extends"], self::SERVICE_CHAR);
+                if (!$this->referenceResolver->keyIsAliased($extends)) {
+                    $extends = $this->referenceResolver->aliasThisKey($extends, $alias);
+                }
                 if (!isset($this->abstractDefinitions[$extends])) {
                     throw new ConfigException(
                         sprintf(
