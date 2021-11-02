@@ -12,7 +12,7 @@ class JsonLoader implements LoaderInterface {
     /**
      * {@inheritDoc}
      */
-    public function getName()
+    public function getName(): string
     {
         return "JSON Loader";
     }
@@ -20,21 +20,23 @@ class JsonLoader implements LoaderInterface {
     /**
      * {@inheritDoc}
      */
-    public function supports($file)
+    public function supports($file): bool
     {
         return (pathinfo($file, PATHINFO_EXTENSION) == "json");
     }
 
     /**
      * {@inheritDoc}
-     * @throws \Lexide\Syringe\Exception\LoaderException
+     * @throws LoaderException
      */
-    public function loadFile($file)
+    public function loadFile($file): array
     {
-        $data = json_decode(file_get_contents($file), true);
-        if (json_last_error() != JSON_ERROR_NONE) {
-            throw new LoaderException(sprintf("Could not load the JSON file '%s': %s", $file, json_last_error_msg()));
+        try {
+            $data = json_decode(file_get_contents($file), true, JSON_THROW_ON_ERROR);
+        } catch (\JsonException $e) {
+            throw new LoaderException(sprintf("Could not load the JSON file '%s'", $file), $e);
         }
+
         return $data;
     }
 
