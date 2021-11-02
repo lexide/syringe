@@ -34,7 +34,7 @@ class JsonLoader implements LoaderInterface {
         try {
             $data = json_decode(file_get_contents($file), true, JSON_THROW_ON_ERROR);
         } catch (\JsonException $e) {
-            throw new LoaderException(sprintf("Could not load the JSON file '%s'", $file), $e);
+            throw new LoaderException(sprintf("Could not load the JSON file '%s'", $file), 0, $e);
         }
 
         return $data;
