@@ -5,14 +5,14 @@ namespace Lexide\Syringe\Loader;
 use Lexide\Syringe\Exception\LoaderException;
 
 /**
- * Load a config file in JSON format
+ * Load a config array from a PHP script
  */
 class PhpLoader implements LoaderInterface {
 
     /**
      * {@inheritDoc}
      */
-    public function getName()
+    public function getName(): string
     {
         return "Php Loader";
     }
@@ -20,16 +20,16 @@ class PhpLoader implements LoaderInterface {
     /**
      * {@inheritDoc}
      */
-    public function supports($file)
+    public function supports($file): bool
     {
-        return (pathinfo($file, PATHINFO_EXTENSION) == "php");
+        return pathinfo($file, PATHINFO_EXTENSION) == "php";
     }
 
     /**
      * {@inheritDoc}
-     * @throws \Lexide\Syringe\Exception\LoaderException
+     * @throws LoaderException
      */
-    public function loadFile($file)
+    public function loadFile($file): array
     {
         if (!file_exists($file)) {
             throw new LoaderException("Requested file '{$file}' doesn't exist");
