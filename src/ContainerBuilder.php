@@ -37,6 +37,11 @@ class ContainerBuilder {
     const TAG_CHAR = "#";
 
     /**
+     * The character that identifies the separation between namespace and key
+     */
+    const NAMESPACE_SEPARATOR = ".";
+
+    /**
      * The prefix of any environment variables we want to try to automatically import
      */
     const ENVIRONMENT_PREFIX = "SYRINGE__";
