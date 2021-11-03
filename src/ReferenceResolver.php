@@ -44,7 +44,7 @@ class ReferenceResolver implements ReferenceResolverInterface
         if (!is_string($alias)) {
             $alias = "";
         }
-        if ($arg[0] == ContainerBuilder::SERVICE_CHAR) {
+        if (is_string($arg) && $arg[0] == ContainerBuilder::SERVICE_CHAR) {
             $originalName = substr($arg, 1);
             $name = $this->aliasThisKey($originalName, $alias);
             // check if the service exists
