@@ -5,8 +5,9 @@ namespace Lexide\Syringe\Tests\Loader;
 use Lexide\Syringe\ContainerBuilder;
 use Lexide\Syringe\Loader\PhpLoader;
 use Lexide\Syringe\ReferenceResolver;
+use PHPUnit\Framework\TestCase;
 
-class PhpLoaderTest extends \PHPUnit_Framework_TestCase
+class PhpLoaderTest extends TestCase
 {
     public function testParameterReturnCorrect()
     {
