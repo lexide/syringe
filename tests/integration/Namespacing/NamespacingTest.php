@@ -6,8 +6,9 @@ use Lexide\Syringe\ContainerBuilder;
 use Lexide\Syringe\Loader\JsonLoader;
 use Lexide\Syringe\Loader\YamlLoader;
 use Lexide\Syringe\ReferenceResolver;
+use PHPUnit\Framework\TestCase;
 
-class NamespacingTest extends \PHPUnit_Framework_TestCase
+class NamespacingTest extends TestCase
 {
     public function testParameterLayering()
     {
