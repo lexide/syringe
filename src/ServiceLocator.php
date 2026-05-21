@@ -17,7 +17,7 @@ class ServiceLocator
      */
     protected $container;
 
-    public function __construct(Container $container = null)
+    public function __construct(?Container $container = null)
     {
         if (!empty($container)) {
             $this->setContainer($container);
