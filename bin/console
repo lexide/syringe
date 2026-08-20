@@ -6,14 +6,18 @@ include_once("$rootDir/vendor/autoload.php");
 
 use Lexide\Syringe\Command\SchemaLintCommand;
 use Lexide\Syringe\Schema\SchemaLinter;
+use Symfony\Component\Console\Application;
 
 // linter
-$schemaPath = "$rootDir/config/schema.yml";
-
 $linter = new SchemaLinter();
-$lintCommand = new SchemaLintCommand($schemaPath, $linter);
+$lintCommand = new SchemaLintCommand($linter);
 
-$app = new \Symfony\Component\Console\Application("Syringe dev tools", "1.0");
-$app->add($lintCommand);
+$app = new Application("Syringe dev tools", "1.0");
+// handle deprecated methods
+if (method_exists($app, "addCommand")) {
+    $app->addCommand($lintCommand);
+} else {
+    $app->add($lintCommand);
+}
 
 $app->run();
