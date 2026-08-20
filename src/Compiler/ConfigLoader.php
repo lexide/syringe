@@ -9,15 +9,8 @@ use Lexide\Syringe\Loader\LoaderRegistry;
 class ConfigLoader
 {
 
-    /**
-     * @var LoaderRegistry
-     */
-    protected $loaderRegistry;
-
-    /**
-     * @var string[]
-     */
-    protected $configPaths;
+    protected LoaderRegistry $loaderRegistry;
+    protected array $configPaths;
 
     /**
      * @param LoaderRegistry $loaderRegistry
@@ -29,11 +22,15 @@ class ConfigLoader
 
     /**
      * @param string[] $configPaths
+     * @throws ConfigException
      */
-    public function setConfigPaths(array $configPaths)
+    public function setConfigPaths(array $configPaths): void
     {
         $this->configPaths = [];
         foreach ($configPaths as $path) {
+            if (!is_dir($path)) {
+                throw new ConfigException("The config path '$path' is not a valid directory");
+            }
             $this->configPaths[] = rtrim($path, DIRECTORY_SEPARATOR) . DIRECTORY_SEPARATOR;
         }
     }
@@ -43,7 +40,6 @@ class ConfigLoader
      * @param string $relativeTo
      * @return array
      * @throws ConfigException
-     * @throws LoaderException
      */
     public function loadConfig(string $file, string $relativeTo = ""): array
     {
@@ -59,7 +55,11 @@ class ConfigLoader
             throw new ConfigException("The config file '$file' could not be found in any of the configured paths$relativeMessage");
         }
 
-        $loader = $this->loaderRegistry->findLoaderForFile($filePath);
+        try {
+            $loader = $this->loaderRegistry->findLoaderForFile($filePath);
+        } catch (LoaderException $e) {
+            throw new ConfigException("Failed to load file '$file'", previous: $e);
+        }
         return [$loader->loadFile($filePath), $filePath];
     }
 
