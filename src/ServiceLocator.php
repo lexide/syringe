@@ -2,9 +2,10 @@
 
 namespace Lexide\Syringe;
 
-use Pimple\Container;
+use Lexide\Syringe\Tag\TagCollection;
 use Lexide\Syringe\Exception\ConfigException;
 use Lexide\Syringe\Exception\ReferenceException;
+use Pimple\Container;
 
 /**
  * ServiceLocator
@@ -12,31 +13,37 @@ use Lexide\Syringe\Exception\ReferenceException;
 class ServiceLocator
 {
 
-    /**
-     * @var Container
-     */
-    protected $container;
+    protected ?Container $container = null;
 
-    public function __construct(Container $container = null)
+    /**
+     * @param ?Container $container
+     */
+    public function __construct(?Container $container = null)
     {
         if (!empty($container)) {
             $this->setContainer($container);
         }
     }
 
-    public function setContainer(Container $container)
+    /**
+     * @param Container $container
+     */
+    public function setContainer(Container $container): void
     {
         $this->container = $container;
     }
 
-    public function get($serviceName, $resolveTags = true)
+    /**
+     * @param string $serviceName
+     * @param bool $resolveTags
+     * @return mixed
+     * @throws ConfigException
+     * @throws ReferenceException
+     */
+    public function get(string $serviceName, bool $resolveTags = true): mixed
     {
         if (!$this->container instanceof Container) {
             throw new ConfigException("No Container has been set on the ServiceLocator");
-        }
-
-        if (!is_string($serviceName)) {
-            throw new \InvalidArgumentException("Service name must be a string, received " . gettype($serviceName));
         }
 
         if (!$this->container->offsetExists($serviceName)) {
