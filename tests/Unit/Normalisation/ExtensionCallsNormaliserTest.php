@@ -4,6 +4,7 @@ namespace Lexide\Syringe\Test\Unit\Normalisation;
 
 use Lexide\Syringe\Normalisation\ExtensionCallsNormaliser;
 use Mockery\Adapter\Phpunit\MockeryPHPUnitIntegration;
+use PHPUnit\Framework\Attributes\DataProvider;
 use PHPUnit\Framework\TestCase;
 
 class ExtensionCallsNormaliserTest extends TestCase
@@ -11,12 +12,7 @@ class ExtensionCallsNormaliserTest extends TestCase
     use MockeryPHPUnitIntegration;
     use ExpectedDefinitionsTestTrait;
 
-    /**
-     * @dataProvider extensionsProvider
-     *
-     * @param $definitions
-     * @param $expectedDefinitions
-     */
+    #[DataProvider("extensionsProvider")]
     public function testNormalisation($definitions, $expectedDefinitions)
     {
         $normaliser = new ExtensionCallsNormaliser();
@@ -28,7 +24,7 @@ class ExtensionCallsNormaliserTest extends TestCase
     /**
      * @return array[]
      */
-    public function extensionsProvider(): array
+    public static function extensionsProvider(): array
     {
         return [
             "No extensions" => [

@@ -10,26 +10,16 @@ use Mockery\Adapter\Phpunit\MockeryPHPUnitIntegration;
 use Mockery\MockInterface;
 use org\bovigo\vfs\vfsStream;
 use org\bovigo\vfs\vfsStreamDirectory;
+use PHPUnit\Framework\Attributes\DataProvider;
 use PHPUnit\Framework\TestCase;
 
 class ConfigLoaderTest extends TestCase
 {
     use MockeryPHPUnitIntegration;
 
-    /**
-     * @var LoaderInterface|MockInterface
-     */
-    protected $loader;
-
-    /**
-     * @var LoaderRegistry|MockInterface
-     */
-    protected $loaderRegistry;
-
-    /**
-     * @var vfsStreamDirectory
-     */
-    protected $vfs;
+    protected LoaderInterface|MockInterface $loader;
+    protected LoaderRegistry|MockInterface$loaderRegistry;
+    protected vfsStreamDirectory $vfs;
 
     public function setUp(): void
     {
@@ -38,15 +28,7 @@ class ConfigLoaderTest extends TestCase
         $this->loaderRegistry->shouldReceive("findLoaderForFile")->andReturn($this->loader);
     }
 
-    /**
-     * @dataProvider fileSystemProvider
-     *
-     * @param array $fileSystem
-     * @param array $configPaths
-     * @param string $file
-     * @param string $relativeTo
-     * @param bool $expectedToFind
-     */
+    #[DataProvider("fileSystemProvider")]
     public function testFindingFiles(
         array $fileSystem,
         array $configPaths,
@@ -80,7 +62,7 @@ class ConfigLoaderTest extends TestCase
         $this->assertStringContainsString($expectedFilePath, $filePath);
     }
 
-    public function fileSystemProvider(): array
+    public static function fileSystemProvider(): array
     {
         return [
             "single config dir - found" => [

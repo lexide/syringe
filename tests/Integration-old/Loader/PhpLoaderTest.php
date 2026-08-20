@@ -2,9 +2,9 @@
 
 namespace Lexide\Syringe\Test\Unit\Loader;
 
-use Lexide\Syringe\ContainerBuilder;
+use Lexide\Syringe\Container\ContainerBuilder;
 use Lexide\Syringe\Loader\PhpLoader;
-use Lexide\Syringe\ReferenceResolver;
+use Lexide\Syringe\Reference\ReferenceResolver;
 use PHPUnit\Framework\TestCase;
 
 class PhpLoaderTest extends TestCase

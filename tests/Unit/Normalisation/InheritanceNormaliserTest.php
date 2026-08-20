@@ -3,7 +3,10 @@
 namespace Lexide\Syringe\Test\Unit\Normalisation;
 
 use Lexide\Syringe\Normalisation\InheritanceNormaliser;
+use Lexide\Syringe\Reference\ReferenceHelper;
 use Mockery\Adapter\Phpunit\MockeryPHPUnitIntegration;
+use Mockery\MockInterface;
+use PHPUnit\Framework\Attributes\DataProvider;
 use PHPUnit\Framework\TestCase;
 
 class InheritanceNormaliserTest extends TestCase
@@ -12,21 +15,19 @@ class InheritanceNormaliserTest extends TestCase
     use NormalisationErrorTestTrait;
     use ExpectedDefinitionsTestTrait;
 
+    protected ReferenceHelper|MockInterface $referenceHelper;
+
     public function setUp(): void
     {
         $this->setupErrorMocks();
+        $this->referenceHelper = \Mockery::mock(ReferenceHelper::class);
+        $this->referenceHelper->shouldReceive("getServiceKey")->andReturnArg(0);
     }
 
-    /**
-     * @dataProvider inheritanceProvider
-     *
-     * @param $services
-     * @param $expectedDefinitions
-     * @param $missingDefinitions
-     */
+    #[DataProvider("inheritanceProvider")]
     public function testInheritance($services, $expectedDefinitions, $missingDefinitions)
     {
-        $normaliser = new InheritanceNormaliser($this->helper);
+        $normaliser = new InheritanceNormaliser($this->referenceHelper, $this->errorHelper);
 
         $definitions = [
             "services" => $services
@@ -44,7 +45,7 @@ class InheritanceNormaliserTest extends TestCase
 
     public function testInheritedServiceMustBeAbstract()
     {
-        $normaliser = new InheritanceNormaliser($this->helper);
+        $normaliser = new InheritanceNormaliser($this->referenceHelper, $this->errorHelper);
 
         $definitions = [
             "services" => [
@@ -77,7 +78,7 @@ class InheritanceNormaliserTest extends TestCase
 
     public function testInheritanceChaining()
     {
-        $normaliser = new InheritanceNormaliser($this->helper);
+        $normaliser = new InheritanceNormaliser($this->referenceHelper, $this->errorHelper);
 
         $definitions = [
             "services" => [
@@ -141,7 +142,7 @@ class InheritanceNormaliserTest extends TestCase
 
     public function testCircularInheritanceChainDetection()
     {
-        $normaliser = new InheritanceNormaliser($this->helper);
+        $normaliser = new InheritanceNormaliser($this->referenceHelper, $this->errorHelper);
 
         $definitions = [
             "services" => [
@@ -183,7 +184,7 @@ class InheritanceNormaliserTest extends TestCase
     /**
      * @return array[]
      */
-    public function inheritanceProvider(): array
+    public static function inheritanceProvider(): array
     {
         return [
             "no inheritance" => [

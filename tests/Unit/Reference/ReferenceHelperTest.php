@@ -1,16 +1,17 @@
 <?php
 
-namespace Lexide\Syringe\Test\Unit\Compiler;
+namespace Lexide\Syringe\Test\Unit\Reference;
 
-use Lexide\Syringe\Compiler\CompilationHelper;
+use Lexide\Syringe\Reference\ReferenceHelper;
+use PHPUnit\Framework\Attributes\DataProvider;
 use PHPUnit\Framework\TestCase;
 
-class CompilationHelperTest extends TestCase
+class ReferenceHelperTest extends TestCase
 {
 
     public function testDetectServiceReference()
     {
-        $helper = new CompilationHelper();
+        $helper = new ReferenceHelper();
 
         $this->assertTrue($helper->isServiceReference("@foo"));
         $this->assertFalse($helper->isServiceReference("foo"));
@@ -19,74 +20,46 @@ class CompilationHelperTest extends TestCase
 
     public function testGetServiceKey()
     {
-        $helper = new CompilationHelper();
+        $helper = new ReferenceHelper();
         $this->assertSame("foo", $helper->getServiceKey("@foo"));
     }
 
     public function testGetServiceReference()
     {
-        $helper = new CompilationHelper();
+        $helper = new ReferenceHelper();
         $this->assertSame("@foo", $helper->getServiceReference("foo"));
         $this->assertSame("@bar", $helper->getServiceReference("@bar"));
     }
 
-    /**
-     * @dataProvider findingParametersProvider
-     *
-     * @param $value
-     * @param $expectedParameter
-     * @param int $offset
-     */
+    #[DataProvider("findingParametersProvider")]
     public function testFindingParameters($value, $expectedParameter, $offset = 0)
     {
-        $helper = new CompilationHelper();
+        $helper = new ReferenceHelper();
         $this->assertSame($expectedParameter, $helper->findNextParameter($value, $offset));
     }
 
-    /**
-     * @dataProvider replacingParametersProvider
-     *
-     * @param $value
-     * @param $parameter
-     * @param $replacement
-     * @param $expected
-     * @param bool $removeChars
-     */
+    #[DataProvider("replacingParametersProvider")]
     public function testReplacingParameters($value, $parameter, $replacement, $expected, $removeChars = false)
     {
-        $helper = new CompilationHelper();
+        $helper = new ReferenceHelper();
         $this->assertSame($expected, $helper->replaceParameterReference($value, $parameter, $replacement, $removeChars));
     }
 
-    /**
-     * @dataProvider findingConstantsProvider
-     *
-     * @param $value
-     * @param $expectedParameter
-     * @param int $offset
-     */
+    #[DataProvider("findingConstantsProvider")]
     public function testFindingConstants($value, $expectedParameter, $offset = 0)
     {
-        $helper = new CompilationHelper();
+        $helper = new ReferenceHelper();
         $this->assertSame($expectedParameter, $helper->findNextConstant($value, $offset));
     }
 
-    /**
-     * @dataProvider replacingConstantsProvider
-     *
-     * @param $value
-     * @param $parameter
-     * @param $replacement
-     * @param $expected
-     * @param bool $removeChars
-     */
+    #[DataProvider("replacingConstantsProvider")]
     public function testReplacingConstants($value, $parameter, $replacement, $expected, $removeChars = false)
     {
-        $helper = new CompilationHelper();
+        $helper = new ReferenceHelper();
         $this->assertSame($expected, $helper->replaceConstantReference($value, $parameter, $replacement, $removeChars));
     }
 
-    public function findingParametersProvider(): array
+    public static function findingParametersProvider(): array
     {
         return [
             "no parameter" => [
@@ -111,13 +84,13 @@ class CompilationHelperTest extends TestCase
                 11
             ],
             "ignores escaped characters" => [
-                "This %% %test% has escaped characters",
+                "This \\% %test% has escaped characters",
                 "test"
             ]
         ];
     }
 
-    public function replacingParametersProvider(): array
+    public static function replacingParametersProvider(): array
     {
         return [
             "replace parameter" => [
@@ -139,10 +112,10 @@ class CompilationHelperTest extends TestCase
                 "This string has lots of %bar% before and after"
             ],
             "can replace regex special characters correctly" => [
-                "%%foo bar%% %foo.bar%",
+                "\\%foo bar\\% %foo.bar%",
                 "foo.bar",
                 "baz.bam",
-                "%%foo bar%% %baz.bam%"
+                "\\%foo bar\\% %baz.bam%"
             ],
             "removes parameters characters too" => [
                 "There is no %spoon%.",
@@ -154,7 +127,7 @@ class CompilationHelperTest extends TestCase
         ];
     }
 
-    public function findingConstantsProvider(): array
+    public static function findingConstantsProvider(): array
     {
         return [
             "no constant" => [
@@ -179,13 +152,13 @@ class CompilationHelperTest extends TestCase
                 11
             ],
             "ignores escaped characters" => [
-                "This ^^ ^test^ has escaped characters",
+                "This \\^ ^test^ has escaped characters",
                 "test"
             ]
         ];
     }
 
-    public function replacingConstantsProvider(): array
+    public static function replacingConstantsProvider(): array
     {
         return [
             "replace constant" => [

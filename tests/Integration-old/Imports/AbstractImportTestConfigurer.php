@@ -2,10 +2,10 @@
 
 namespace Lexide\Syringe\Test\Integration\Imports;
 
-use Lexide\Syringe\ContainerBuilder;
+use Lexide\Syringe\Container\ContainerBuilder;
 use Lexide\Syringe\Exception\LoaderException;
 use Lexide\Syringe\Loader\YamlLoader;
-use Lexide\Syringe\ReferenceResolver;
+use Lexide\Syringe\Reference\ReferenceResolver;
 use org\bovigo\vfs\vfsStream;
 use org\bovigo\vfs\vfsStreamDirectory;
 use PHPUnit\Framework\TestCase;

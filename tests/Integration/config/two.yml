@@ -1,0 +1,12 @@
+imports:
+  - "three.yml"
+
+parameters:
+  import.two: true
+
+  override: "OR THIS"
+  importOverride: "THIS"
+
+  constant.value: "^PHP_INT_MAX^"
+  constant.substitution: "The ^Lexide\\Syringe\\Assertion\\AssertionInterface::TYPE_SERVICE^ reference character is ^Lexide\\Syringe\\Reference\\Reference::SERVICE_CHAR^"
+  constant.escaping: "The constant character \\^ can also be escaped"

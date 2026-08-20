@@ -2,45 +2,38 @@
 
 namespace Lexide\Syringe\Test\Unit\Validation;
 
-use Lexide\Syringe\Compiler\CompilationHelper;
-use Lexide\Syringe\ContainerBuilder;
+use Lexide\Syringe\Error\ErrorHelper;
+use Lexide\Syringe\Error\SyringeError;
+use Lexide\Syringe\Reference\Reference;
+use Lexide\Syringe\Reference\ReferenceHelper;
 use Lexide\Syringe\Validation\ReferenceValidator;
 use Lexide\Syringe\Validation\ReferenceValidatorHelper;
-use Lexide\Syringe\Validation\ValidationError;
 use Mockery\Adapter\Phpunit\MockeryPHPUnitIntegration;
 use Mockery\MockInterface;
+use PHPUnit\Framework\Attributes\DataProvider;
 use PHPUnit\Framework\TestCase;
 
 class ReferenceValidatorTest extends TestCase
 {
     use MockeryPHPUnitIntegration;
 
-    /**
-     * @var ReferenceValidatorHelper|MockInterface
-     */
-    protected $referenceHelper;
-
-    /**
-     * @var CompilationHelper|MockInterface
-     */
-    protected $compilationHelper;
-
-    /**
-     * @var ValidationError|MockInterface
-     */
-    protected $error;
+    protected ReferenceValidatorHelper|MockInterface $validatorHelper;
+    protected ReferenceHelper|MockInterface $referenceHelper;
+    protected ErrorHelper|MockInterface $errorHelper;
+    protected SyringeError|MockInterface $error;
 
     public function setUp(): void
     {
-        $this->referenceHelper = \Mockery::mock(ReferenceValidatorHelper::class);
-        $this->referenceHelper->shouldReceive("setDefinitions");
-        $this->referenceHelper->shouldReceive("getServiceKey")->andReturnUsing(function ($service) {
-            return ltrim($service, ContainerBuilder::SERVICE_CHAR);
+        $this->validatorHelper = \Mockery::mock(ReferenceValidatorHelper::class);
+        $this->validatorHelper->shouldReceive("setDefinitions");
+        $this->validatorHelper->shouldReceive("getServiceKey")->andReturnUsing(function ($service) {
+            return ltrim($service, Reference::SERVICE_CHAR);
         });
 
-        $this->compilationHelper = \Mockery::mock(CompilationHelper::class);
+        $this->referenceHelper = \Mockery::mock(ReferenceHelper::class);
+        $this->errorHelper = \Mockery::mock(ErrorHelper::class);
 
-        $this->error = \Mockery::mock(ValidationError::class);
+        $this->error = \Mockery::mock(SyringeError::class);
     }
 
     public function testParameterValidation()
@@ -65,7 +58,7 @@ class ReferenceValidatorTest extends TestCase
             "%mixed% %params%" => [1, ["params" => []]]
         ];
 
-        $this->referenceHelper->shouldReceive("checkValueForReferences")->andReturnUsing(
+        $this->validatorHelper->shouldReceive("checkValueForReferences")->andReturnUsing(
             function ($value, $options) use ($valueMap) {
                 $this->assertArrayHasKey("skipServices", $options);
                 $this->assertArrayHasKey($value, $valueMap);
@@ -86,7 +79,7 @@ class ReferenceValidatorTest extends TestCase
             "six" => ["params"],
         ];
 
-        $this->referenceHelper->shouldReceive("addReference")->andReturnUsing(
+        $this->validatorHelper->shouldReceive("addReference")->andReturnUsing(
             function ($parameterReferences, $parameter, $references) use ($referenceMap) {
                 $this->assertArrayHasKey($parameter, $referenceMap);
                 $this->assertCount(count($referenceMap[$parameter]), $references);
@@ -103,7 +96,7 @@ class ReferenceValidatorTest extends TestCase
 
         $this->error->shouldReceive("addContext")->with("parameter", \Mockery::any())->times($expectedErrorCount);
 
-        $validator = new ReferenceValidator($this->referenceHelper, $this->compilationHelper);
+        $validator = new ReferenceValidator($this->validatorHelper, $this->referenceHelper, $this->errorHelper);
         $errors = $validator->validate($definitions);
         $this->assertCount($expectedErrorCount, $errors);
     }
@@ -129,19 +122,19 @@ class ReferenceValidatorTest extends TestCase
             return $value[0] == "error";
         }));
 
-        $this->referenceHelper->shouldReceive("checkValueForReferences")->andReturn([
+        $this->validatorHelper->shouldReceive("checkValueForReferences")->andReturn([
             array_fill(0, $parameterErrorCount, $this->error),
             $parameterReferences
         ]);
-        $this->referenceHelper->shouldReceive("addReference")->andReturnArg(2);
+        $this->validatorHelper->shouldReceive("addReference")->andReturnArg(2);
 
-        $this->referenceHelper->shouldReceive("findCircularReferences")->andReturnUsing(
+        $this->validatorHelper->shouldReceive("findCircularReferences")->andReturnUsing(
             function ($parameter) use ($parameterReferences) {
                 $this->assertArrayHasKey($parameter, $parameterReferences);
                 return $parameterReferences[$parameter][0] == "error";
             }
         );
-        $this->compilationHelper
+        $this->errorHelper
             ->shouldReceive("referenceError")
             ->times($circularReferenceErrorCount)
             ->andReturn($this->error);
@@ -151,18 +144,11 @@ class ReferenceValidatorTest extends TestCase
 
         $this->error->shouldReceive("addContext")->with("parameter", \Mockery::any())->times($totalErrorCount);
 
-        $validator = new ReferenceValidator($this->referenceHelper, $this->compilationHelper);
+        $validator = new ReferenceValidator($this->validatorHelper, $this->referenceHelper, $this->errorHelper);
         $this->assertCount($totalErrorCount, $validator->validate($definitions));
     }
 
-    /**
-     * @dataProvider invalidServicesProvider
-     *
-     * @param array $definitions
-     * @param int $expectedErrorCount
-     * @param string $expectedErrorRegex
-     * @param bool $serviceErrors
-     */
+    #[DataProvider("invalidServicesProvider")]
     public function testInvalidServices(
         array $definitions,
         int $expectedErrorCount,
@@ -170,9 +156,9 @@ class ReferenceValidatorTest extends TestCase
         bool $serviceErrors = false
     ) {
         if ($expectedErrorCount == 0) {
-            $this->compilationHelper->shouldNotReceive("referenceError");
+            $this->errorHelper->shouldNotReceive("referenceError");
         } else {
-            $this->compilationHelper->shouldReceive("referenceError")
+            $this->errorHelper->shouldReceive("referenceError")
                 ->with($expectedErrorRegex? \Mockery::pattern($expectedErrorRegex): \Mockery::any())
                 ->times($expectedErrorCount)
                 ->andReturn($this->error);
@@ -180,23 +166,18 @@ class ReferenceValidatorTest extends TestCase
 
         $this->error->shouldReceive("addContext")->times($serviceErrors? $expectedErrorCount: 0);
 
-        $validator = new ReferenceValidator($this->referenceHelper, $this->compilationHelper);
+        $validator = new ReferenceValidator($this->validatorHelper, $this->referenceHelper, $this->errorHelper);
         $errors = $validator->validate($definitions);
 
         $this->assertCount($expectedErrorCount, $errors);
     }
 
-    /**
-     * @dataProvider serviceDefinitionProvider
-     *
-     * @param array $services
-     * @param array $expectedErrors
-     */
+    #[DataProvider("serviceDefinitionProvider")]
     public function testServiceValidation(array $services, array $expectedErrors)
     {
         $expectedErrorCount = count($expectedErrors);
 
-        $this->compilationHelper->shouldReceive("referenceError")->andReturnUsing(
+        $this->errorHelper->shouldReceive("referenceError")->andReturnUsing(
             function ($message) use (&$expectedErrors) {
                 $found = false;
                 foreach ($expectedErrors as $i => $messageRegex) {
@@ -211,11 +192,11 @@ class ReferenceValidatorTest extends TestCase
                 return $this->error;
             }
         );
-        $this->compilationHelper->shouldReceive("getServiceKey")->andReturnArg(0);
+        $this->referenceHelper->shouldReceive("getServiceKey")->andReturnArg(0);
 
-        $this->referenceHelper->shouldReceive("checkArrayForReferences")->andReturn([[], []]);
-        $this->referenceHelper->shouldReceive("checkServiceReference")->andReturn("foo");
-        $this->referenceHelper->shouldReceive("addReference")->andReturn([]);
+        $this->validatorHelper->shouldReceive("checkArrayForReferences")->andReturn([[], []]);
+        $this->validatorHelper->shouldReceive("checkServiceReference")->andReturn("foo");
+        $this->validatorHelper->shouldReceive("addReference")->andReturn([]);
 
         $this->error->shouldReceive("addContext")->with("service", \Mockery::any())->times($expectedErrorCount);
 
@@ -223,28 +204,21 @@ class ReferenceValidatorTest extends TestCase
             "services" => $services
         ];
 
-        $validator = new ReferenceValidator($this->referenceHelper, $this->compilationHelper);
+        $validator = new ReferenceValidator($this->validatorHelper, $this->referenceHelper, $this->errorHelper);
         $errors = $validator->validate($definitions);
         $this->assertCount($expectedErrorCount, $errors);
 
         $this->assertEmpty($expectedErrors, "Some expected errors did not occur");
     }
 
-    /**
-     * @dataProvider serviceReferenceProvider
-     *
-     * @param array $services
-     * @param int $totalExpectedErrors
-     * @param array $expectedErrors
-     * @param array $serviceChecks
-     */
+    #[DataProvider("serviceReferenceProvider")]
     public function testServiceDefinitionReferences(
         array $services,
         int $totalExpectedErrors,
         array $expectedErrors = [],
         array $serviceChecks = []
     ) {
-        $this->referenceHelper->shouldReceive("checkArrayForReferences")->andReturnUsing(
+        $this->validatorHelper->shouldReceive("checkArrayForReferences")->andReturnUsing(
             function ($array, $options = []) {
                 if (!empty($array["options"])) {
                     foreach ($array["options"] as $key => $value) {
@@ -262,17 +236,17 @@ class ReferenceValidatorTest extends TestCase
             }
         );
 
-        $this->referenceHelper->shouldReceive("checkServiceReference")->andReturnUsing(
+        $this->validatorHelper->shouldReceive("checkServiceReference")->andReturnUsing(
             function ($value) use ($serviceChecks) {
                 return $serviceChecks[$value] ?? "foo";
             }
         );
 
-        $this->referenceHelper->shouldReceive("addReference")->andReturn([]);
+        $this->validatorHelper->shouldReceive("addReference")->andReturn([]);
 
-        $this->compilationHelper->shouldReceive("getServiceKey")->andReturnArg(0);
+        $this->referenceHelper->shouldReceive("getServiceKey")->andReturnArg(0);
 
-        $this->compilationHelper->shouldReceive("referenceError")->andReturnUsing(
+        $this->errorHelper->shouldReceive("referenceError")->andReturnUsing(
             function ($message) use (&$expectedErrors) {
                 $found = false;
                 foreach ($expectedErrors as $i => $messageRegex) {
@@ -293,7 +267,7 @@ class ReferenceValidatorTest extends TestCase
             "services" => $services
         ];
 
-        $validator = new ReferenceValidator($this->referenceHelper, $this->compilationHelper);
+        $validator = new ReferenceValidator($this->validatorHelper, $this->referenceHelper, $this->errorHelper);
         $errors = $validator->validate($definitions);
         $this->assertCount($totalExpectedErrors, $errors);
 
@@ -362,16 +336,16 @@ class ReferenceValidatorTest extends TestCase
 
         foreach ($referenceMap as $key => $references) {
             $returnValue = $key == "tag"? $tagReferences: $serviceReferences;
-            $this->referenceHelper
+            $this->validatorHelper
                 ->shouldReceive("addReference")
                 ->with(\Mockery::any(), $key, $references)
                 ->once()
                 ->andReturn($returnValue);
         }
 
-        $this->referenceHelper->shouldReceive("checkServiceReference")->andReturnTrue();
+        $this->validatorHelper->shouldReceive("checkServiceReference")->andReturnTrue();
 
-        $this->referenceHelper->shouldReceive("checkArrayForReferences")->andReturnUsing(
+        $this->validatorHelper->shouldReceive("checkArrayForReferences")->andReturnUsing(
             function ($array) use ($referenceMap) {
                 $id = $array["id"];
                 $references = $referenceMap[$id];
@@ -389,10 +363,10 @@ class ReferenceValidatorTest extends TestCase
             }
         }
 
-        $this->compilationHelper->shouldReceive("referenceError")->times($expectedErrorCount)->andReturn($this->error);
-        $this->compilationHelper->shouldReceive("getServiceKey")->andReturnArg(0);
+        $this->errorHelper->shouldReceive("referenceError")->times($expectedErrorCount)->andReturn($this->error);
+        $this->referenceHelper->shouldReceive("getServiceKey")->andReturnArg(0);
 
-        $this->referenceHelper->shouldReceive("findCircularReferences")
+        $this->validatorHelper->shouldReceive("findCircularReferences")
             ->with(\Mockery::any(), $serviceReferences, $tagReferences)
             ->andReturnUsing(function ($service) use ($serviceReferences) {
                 $this->assertArrayHasKey($service, $serviceReferences);
@@ -401,15 +375,12 @@ class ReferenceValidatorTest extends TestCase
 
         $this->error->shouldReceive("addContext")->with("service", \Mockery::any())->times($expectedErrorCount);
 
-        $validator = new ReferenceValidator($this->referenceHelper, $this->compilationHelper);
+        $validator = new ReferenceValidator($this->validatorHelper, $this->referenceHelper, $this->errorHelper);
         $errors = $validator->validate($definitions);
         $this->assertCount($expectedErrorCount, $errors);
     }
 
-    /**
-     * @return array[]
-     */
-    public function invalidServicesProvider(): array
+    public static function invalidServicesProvider(): array
     {
         return [
             "no services" => [
@@ -430,10 +401,7 @@ class ReferenceValidatorTest extends TestCase
         ];
     }
 
-    /**
-     * @return array[]
-     */
-    public function serviceDefinitionProvider(): array
+    public static function serviceDefinitionProvider(): array
     {
         $class = \DateTime::class;
         $factoryClass = \DatePeriod::class;
@@ -575,10 +543,7 @@ class ReferenceValidatorTest extends TestCase
         ];
     }
 
-    /**
-     * @return array[]
-     */
-    public function serviceReferenceProvider(): array
+    public static function serviceReferenceProvider(): array
     {
         return [
             "check argument references" => [

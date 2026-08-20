@@ -2,55 +2,47 @@
 
 namespace Lexide\Syringe\Test\Unit\Validation;
 
-use Lexide\Syringe\Compiler\CompilationHelper;
+use Lexide\Syringe\Error\ErrorHelper;
+use Lexide\Syringe\Error\SyringeError;
+use Lexide\Syringe\Reference\ReferenceHelper;
 use Lexide\Syringe\Validation\SyntaxValidator;
-use Lexide\Syringe\Validation\ValidationError;
+use Lexide\Syringe\Validation\TypeValidator;
 use Mockery\Adapter\Phpunit\MockeryPHPUnitIntegration;
 use Mockery\MockInterface;
+use PHPUnit\Framework\Attributes\DataProvider;
 use PHPUnit\Framework\TestCase;
 
 class SyntaxValidatorTest extends TestCase
 {
     use MockeryPHPUnitIntegration;
 
-    /**
-     * @var CompilationHelper|MockInterface
-     */
-    protected $helper;
+    protected ReferenceHelper|MockInterface $referenceHelper;
+    protected ErrorHelper|MockInterface $errorHelper;
+    protected TypeValidator|MockInterface $typeValidator;
 
     public function setUp(): void
     {
-        $this->helper = \Mockery::mock(CompilationHelper::class);
-        $this->helper->shouldReceive("isServiceReference")->passthru();
-        $this->helper->shouldIgnoreMissing(\Mockery::mock(ValidationError::class));
+        $this->referenceHelper = \Mockery::mock(ReferenceHelper::class);
+        $this->referenceHelper->shouldReceive("isServiceReference")->passthru();
+
+        $this->errorHelper = \Mockery::mock(ErrorHelper::class);
+        $this->errorHelper->shouldIgnoreMissing(\Mockery::mock(SyringeError::class));
+
+        $this->typeValidator = \Mockery::mock(TypeValidator::class);
     }
 
-    protected function standardTest(array $schemas, array $definition, int $errorCount = 0)
+    protected function standardTest(array $schemas, array $definition, int $errorCount = 0): void
     {
-        $validator = new SyntaxValidator($this->helper, $schemas);
+        $validator = new SyntaxValidator($this->referenceHelper, $this->errorHelper, $this->typeValidator, $schemas);
 
-        $this->assertCount($errorCount, $validator->validateFile($definition, "test.yml"));
+        $this->assertCount($errorCount, $validator->validate($definition, "test.yml"));
     }
 
-    /**
-     * @dataProvider typeSuccessProvider
-     * @param array $schemas
-     * @param array $definition
-     */
-    public function testTypeValidationSuccessful(array $schemas, array $definition)
+    #[DataProvider("typeProvider")]
+    public function testTypeValidation(array $schemas, array $definition, bool $success, bool $checkTypeResult = false)
     {
-        $this->standardTest($schemas, $definition);
-    }
-
-    /**
-     * @dataProvider typeFailureProvider
-     * @param array $schemas
-     * @param array $definition
-     * @param int $errorCount
-     */
-    public function testTypeValidationFailure(array $schemas, array $definition, int $errorCount = 1)
-    {
-        $this->standardTest($schemas, $definition, $errorCount);
+        $this->typeValidator->shouldReceive("checkType")->andReturn($checkTypeResult);
+        $this->standardTest($schemas, $definition, $success ? 0 : 1);
     }
 
     public function testChildrenValidationSuccess()
@@ -76,6 +68,8 @@ class SyntaxValidatorTest extends TestCase
             "two" => 12345,
             "three" => false
         ];
+
+        $this->typeValidator->shouldReceive("checkType")->andReturnTrue();
 
         $this->standardTest($schemas, $definition);
     }
@@ -103,6 +97,8 @@ class SyntaxValidatorTest extends TestCase
             "two" => false,
             "three" => "foo"
         ];
+
+        $this->typeValidator->shouldReceive("checkType")->andReturnFalse();
 
         $this->standardTest($schemas, $definition, 3);
     }
@@ -132,6 +128,8 @@ class SyntaxValidatorTest extends TestCase
             "four" => "bar"
         ];
 
+        $this->typeValidator->shouldReceive("checkType")->andReturnTrue();
+
         $this->standardTest($schemas, $definition, 1);
     }
 
@@ -150,6 +148,8 @@ class SyntaxValidatorTest extends TestCase
             "two",
             "three"
         ];
+
+        $this->typeValidator->shouldReceive("checkType")->andReturnTrue();
 
         $this->standardTest($schemas, $definition);
     }
@@ -172,37 +172,24 @@ class SyntaxValidatorTest extends TestCase
             "five"
         ];
 
+        $this->typeValidator->shouldReceive("checkType")->andReturnFalse();
+
         $this->standardTest($schemas, $definition, 5);
     }
 
-    /**
-     * @dataProvider requiredChildrenSuccessProvider
-     * @param array $schemas
-     * @param array $definition
-     */
+    #[DataProvider("requiredChildrenSuccessProvider")]
     public function testRequiredChildrenValidationSuccess(array $schemas, array $definition)
     {
         $this->standardTest($schemas, $definition);
     }
 
-    /**
-     * @dataProvider requiredChildrenFailureProvider
-     * @param array $schemas
-     * @param array $definition
-     * @param int $errorCount
-     */
+    #[DataProvider("requiredChildrenFailureProvider")]
     public function testRequiredChildrenValidationFailure(array $schemas, array $definition, int $errorCount = 1)
     {
         $this->standardTest($schemas, $definition, $errorCount);
     }
 
-    /**
-     * @dataProvider xorProvider
-     *
-     * @param bool $shouldBeEmpty
-     * @param bool $isEmpty
-     * @param bool $errorExpected
-     */
+    #[DataProvider("xorProvider")]
     public function testEmptyValidation(bool $shouldBeEmpty, bool $isEmpty, bool $errorExpected)
     {
 
@@ -214,9 +201,9 @@ class SyntaxValidatorTest extends TestCase
 
         $definition = $isEmpty? []: ["not empty"];
 
-        $validator = new SyntaxValidator($this->helper, $schemas);
+        $validator = new SyntaxValidator($this->referenceHelper, $this->errorHelper, $this->typeValidator, $schemas);
 
-        $errors = $validator->validateFile($definition, "test.yml");
+        $errors = $validator->validate($definition, "test.yml");
 
         $this->assertSame(
             $errorExpected,
@@ -238,10 +225,10 @@ class SyntaxValidatorTest extends TestCase
 
         $definition = ["a thing"];
 
-        $this->helper->shouldReceive("warning")->once()->andReturn(\Mockery::mock(ValidationError::class));
+        $this->errorHelper->shouldReceive("warning")->once()->andReturn(\Mockery::mock(SyringeError::class));
 
-        $validator = new SyntaxValidator($this->helper, $schemas);
-        $errors = $validator->validateFile($definition, "test.yml");
+        $validator = new SyntaxValidator($this->referenceHelper, $this->errorHelper, $this->typeValidator, $schemas);
+        $errors = $validator->validate($definition, "test.yml");
 
         $this->assertCount(1, $errors);
     }
@@ -270,6 +257,9 @@ class SyntaxValidatorTest extends TestCase
             123.456
         ];
 
+        // checkType is called twice on a successful validation
+        $this->typeValidator->shouldReceive("checkType")->andReturnValues([false, true, true, false]);
+
         $this->standardTest($schemas, $definition);
     }
 
@@ -293,6 +283,8 @@ class SyntaxValidatorTest extends TestCase
             ]
         ];
 
+        $this->typeValidator->shouldReceive("checkType")->andReturnFalse();
+
         $definition = [
             ["foo"]
         ];
@@ -300,24 +292,7 @@ class SyntaxValidatorTest extends TestCase
         $this->standardTest($schemas, $definition, 1);
     }
 
-    public function twoProvider(): array
-    {
-        return [
-            [[], []]
-        ];
-    }
-
-    public function threeProvider(): array
-    {
-        return [
-            [[], [], 1]
-        ];
-    }
-
-    /**
-     * @return array
-     */
-    public function xorProvider(): array
+    public static function xorProvider(): array
     {
         return [
             [true, true, false],
@@ -327,91 +302,10 @@ class SyntaxValidatorTest extends TestCase
         ];
     }
 
-    public function typeSuccessProvider()
+    public static function typeProvider(): array
     {
         return [
-            "array type" => [
-                [
-                    "syringe" => [
-                        "type" => "array"
-                    ]
-                ],
-                [
-                    "one",
-                    "two" => 2
-                ]
-            ],
-            "list type" => [
-                [
-                    "syringe" => [
-                        "type" => "list"
-                    ]
-                ],
-                [
-                    "one",
-                    "two"
-                ]
-            ],
-            "object type" => [
-                [
-                    "syringe" => [
-                        "type" => "object"
-                    ]
-                ],
-                [
-                    "one" => 1,
-                    "two" => 2
-                ]
-            ],
-            "string type" => [
-                [
-                    "syringe" => [
-                        "element" => [
-                            "type" => "string"
-                        ]
-                    ]
-                ],
-                [
-                    "string"
-                ]
-            ],
-            "number type (integer)" => [
-                [
-                    "syringe" => [
-                        "element" => [
-                            "type" => "number"
-                        ]
-                    ]
-                ],
-                [
-                    123
-                ]
-            ],
-            "number type (float)" => [
-                [
-                    "syringe" => [
-                        "element" => [
-                            "type" => "number"
-                        ]
-                    ]
-                ],
-                [
-                    0.123
-                ]
-            ],
-            "bool type" => [
-                [
-                    "syringe" => [
-                        "element" => [
-                            "type" => "bool"
-                        ]
-                    ]
-                ],
-                [
-                    true
-                ]
-            ],
-            "serviceReference type" => [
+            "serviceReference type success" => [
                 [
                     "syringe" => [
                         "element" => [
@@ -421,45 +315,10 @@ class SyntaxValidatorTest extends TestCase
                 ],
                 [
                     "@ref"
-                ]
-            ],
-            "any type (object)" => [
-                [
-                    "syringe" => [
-                        "element" => [
-                            "type" => "any"
-                        ]
-                    ]
                 ],
-                [
-                    new \stdClass()
-                ]
+                true
             ],
-            "any type (scalar)" => [
-                [
-                    "syringe" => [
-                        "element" => [
-                            "type" => "any"
-                        ]
-                    ]
-                ],
-                [
-                    12345
-                ]
-            ],
-            "any type (array)" => [
-                [
-                    "syringe" => [
-                        "element" => [
-                            "type" => "any"
-                        ]
-                    ]
-                ],
-                [
-                    ["foo"]
-                ]
-            ],
-            "multiple allowed types" => [
+            "multiple types success" => [
                 [
                     "syringe" => [
                         "element" => [
@@ -475,49 +334,9 @@ class SyntaxValidatorTest extends TestCase
                     123,
                     "foo",
                     true
-                ]
-            ]
-        ];
-    }
-
-    public function typeFailureProvider(): array
-    {
-        return [
-            "string type failure" => [
-                [
-                    "syringe" => [
-                        "element" => [
-                            "type" => "string"
-                        ]
-                    ]
                 ],
-                [
-                    12345
-                ]
-            ],
-            "number type failure" => [
-                [
-                    "syringe" => [
-                        "element" => [
-                            "type" => "number"
-                        ]
-                    ]
-                ],
-                [
-                    "12345"
-                ]
-            ],
-            "bool type failure" => [
-                [
-                    "syringe" => [
-                        "element" => [
-                            "type" => "bool"
-                        ]
-                    ]
-                ],
-                [
-                    12345
-                ]
+                true,
+                true
             ],
             "serviceReference type failure" => [
                 [
@@ -529,49 +348,8 @@ class SyntaxValidatorTest extends TestCase
                 ],
                 [
                     "12345"
-                ]
-            ],
-            "array type failure" => [
-                [
-                    "syringe" => [
-                        "element" => [
-                            "type" => "array"
-                        ]
-                    ]
                 ],
-                [
-                    "12345"
-                ]
-            ],
-            "list type failure" => [
-                [
-                    "syringe" => [
-                        "element" => [
-                            "type" => "list"
-                        ]
-                    ]
-                ],
-                [
-                    [
-                        "one" => 1,
-                        "two" => 2
-                    ]
-                ]
-            ],
-            "object type failure" => [
-                [
-                    "syringe" => [
-                        "element" => [
-                            "type" => "object"
-                        ]
-                    ]
-                ],
-                [
-                    [
-                        "one",
-                        "two"
-                    ]
-                ]
+                false
             ],
             "multiple types failure" => [
                 [
@@ -587,12 +365,14 @@ class SyntaxValidatorTest extends TestCase
                 ],
                 [
                     123
-                ]
+                ],
+                false,
+                false
             ]
         ];
     }
 
-    public function requiredChildrenSuccessProvider()
+    public static function requiredChildrenSuccessProvider(): array
     {
         return [
             "single requirement" => [
@@ -754,7 +534,7 @@ class SyntaxValidatorTest extends TestCase
         ];
     }
 
-    public function requiredChildrenFailureProvider()
+    public static function requiredChildrenFailureProvider(): array
     {
         return [
             "single requirement" => [

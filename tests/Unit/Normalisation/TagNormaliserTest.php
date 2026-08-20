@@ -47,7 +47,7 @@ class TagNormaliserTest extends TestCase
 
         $this->testExpectedDefinitions($normalisedDefinitions, [
             "services>one>tags>0>tag" => "foo",
-            "services>one>tags>0>name" => "one",
+            "services>one>tags>0>key" => "one",
             "services>one>tags>1>tag" => "bar",
             "services>one>tags>1>order" => 2
         ]);
@@ -66,7 +66,7 @@ class TagNormaliserTest extends TestCase
                     "tags" => [
                         ["tag" => "foo"],
                         ["tag" => "bar", "order" => 2],
-                        ["tag" => "baz", "name" => "three"]
+                        ["tag" => "baz", "key" => "three"]
                     ]
                 ]
             ]
@@ -80,13 +80,13 @@ class TagNormaliserTest extends TestCase
             "services>one>tags>1>tag" => "bar",
             "services>one>tags>1>order" => 2,
             "services>one>tags>2>tag" => "baz",
-            "services>one>tags>2>name" => "three"
+            "services>one>tags>2>key" => "three"
         ]);
 
         $this->testMissingDefinitions($normalisedDefinitions, [
             "services>one>tags>0>order",
-            "services>one>tags>0>name",
-            "services>one>tags>1>name",
+            "services>one>tags>0>key",
+            "services>one>tags>1>key",
             "services>one>tags>2>order"
         ]);
     }
@@ -99,7 +99,7 @@ class TagNormaliserTest extends TestCase
                     "tags" => [
                         "foo",
                         "bar" => 2,
-                        ["tag" => "baz", "name" => "three"]
+                        ["tag" => "baz", "key" => "three"]
                     ]
                 ]
             ]
@@ -113,13 +113,13 @@ class TagNormaliserTest extends TestCase
             "services>one>tags>1>tag" => "bar",
             "services>one>tags>1>order" => 2,
             "services>one>tags>2>tag" => "baz",
-            "services>one>tags>2>name" => "three"
+            "services>one>tags>2>key" => "three"
         ]);
 
         $this->testMissingDefinitions($normalisedDefinitions, [
             "services>one>tags>0>order",
-            "services>one>tags>0>name",
-            "services>one>tags>1>name",
+            "services>one>tags>0>key",
+            "services>one>tags>1>key",
             "services>one>tags>2>order"
         ]);
     }

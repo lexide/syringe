@@ -2,9 +2,12 @@
 
 namespace Lexide\Syringe\Test\Unit\Normalisation;
 
-use Lexide\Syringe\Compiler\CompilationHelper;
+use Lexide\Syringe\Exception\ReferenceException;
 use Lexide\Syringe\Normalisation\NamespaceNormaliser;
+use Lexide\Syringe\Reference\ReferenceHelper;
 use Mockery\Adapter\Phpunit\MockeryPHPUnitIntegration;
+use Mockery\MockInterface;
+use PHPUnit\Framework\Attributes\DataProvider;
 use PHPUnit\Framework\TestCase;
 
 class NamespaceNormaliserTest extends TestCase
@@ -13,28 +16,33 @@ class NamespaceNormaliserTest extends TestCase
     use ExpectedDefinitionsTestTrait;
     use NormalisationErrorTestTrait;
 
+    protected ReferenceHelper|MockInterface $referenceHelper;
+
     public function setUp(): void
     {
         $this->setupErrorMocks();
-        $this->helper->shouldReceive("isServiceReference")->passthru();
-        $this->helper->shouldReceive("getServiceKey")->passthru();
-        $this->helper->shouldReceive("getServiceReference")->passthru();
+
+        $this->referenceHelper = \Mockery::mock(ReferenceHelper::class);
+        $this->referenceHelper->shouldReceive("isServiceReference")->passthru();
+        $this->referenceHelper->shouldReceive("getServiceKey")->passthru();
+        $this->referenceHelper->shouldReceive("getServiceReference")->passthru();
     }
 
     /**
      * @param array $definitions
      * @param array $expectedDefinitions
      * @param array $missingDefinitions
+     * @throws ReferenceException
      */
     protected function standardTest(
         array $definitions,
         array $expectedDefinitions,
         array $missingDefinitions = []
-    ) {
+    ): void {
         $expectedErrors = [];
         $this->configureErrorTests($expectedErrors);
 
-        $normaliser = new NamespaceNormaliser($this->helper);
+        $normaliser = new NamespaceNormaliser($this->referenceHelper, $this->errorHelper);
 
         [$normalisedDefinitions] = $normaliser->normalise($definitions);
 
@@ -42,24 +50,18 @@ class NamespaceNormaliserTest extends TestCase
         $this->testMissingDefinitions($normalisedDefinitions, $missingDefinitions);
     }
 
-    /**
-     * @dataProvider aliasDefinitionsProvider
-     *
-     * @param array $definitions
-     * @param array $expectedDefinitions
-     * @param array $missingDefinitions
-     */
+    #[DataProvider("aliasDefinitionsProvider")]
     public function testNamespacingAliases(
         array $definitions,
         array $expectedDefinitions,
         array $missingDefinitions = []
     ) {
-        $this->helper->shouldReceive("findNextParameter")->andReturnNull();
+        $this->referenceHelper->shouldReceive("findNextParameter")->andReturnNull();
 
         $this->standardTest($definitions, $expectedDefinitions, $missingDefinitions);
     }
 
-    public function aliasDefinitionsProvider(): array
+    public static function aliasDefinitionsProvider(): array
     {
         return [
             "service aliasing (same namespace)" => [
@@ -268,29 +270,23 @@ class NamespaceNormaliserTest extends TestCase
         ];
         $this->configureErrorTests($expectedErrors);
 
-        $this->helper->shouldReceive("findNextParameter")->andReturnNull();
+        $this->referenceHelper->shouldReceive("findNextParameter")->andReturnNull();
 
-        $normaliser = new NamespaceNormaliser($this->helper);
+        $normaliser = new NamespaceNormaliser($this->referenceHelper, $this->errorHelper);
 
-        [$normalisedDefinitions, $errors] = $normaliser->normalise($definitions);
+        [, $errors] = $normaliser->normalise($definitions);
 
         $this->assertNotEmpty($errors);
         $this->assertEmpty($expectedErrors);
     }
 
-    /**
-     * @dataProvider extensionsDefinitionsProvider
-     *
-     * @param array $definitions
-     * @param array $expectedDefinitions
-     * @param array $missingDefinitions
-     */
+    #[DataProvider("extensionsDefinitionsProvider")]
     public function testNamespacingExtensions(
         array $definitions,
         array $expectedDefinitions,
         array $missingDefinitions = []
     ) {
-        $this->helper->shouldReceive("findNextParameter")->andReturnNull();
+        $this->referenceHelper->shouldReceive("findNextParameter")->andReturnNull();
 
         $this->standardTest($definitions, $expectedDefinitions, $missingDefinitions);
     }
@@ -298,7 +294,7 @@ class NamespaceNormaliserTest extends TestCase
     /**
      * @return array[]
      */
-    public function extensionsDefinitionsProvider(): array
+    public static function extensionsDefinitionsProvider(): array
     {
         return [
             "namespace extensions" => [
@@ -474,25 +470,19 @@ class NamespaceNormaliserTest extends TestCase
         ];
     }
 
-    /**
-     * @dataProvider parameterDefinitionsProvider
-     *
-     * @param array $definitions
-     * @param array $expectedDefinitions
-     * @param array $missingDefinitions
-     */
+    #[DataProvider("parameterDefinitionsProvider")]
     public function testNamespacingParameters(
         array $definitions,
         array $expectedDefinitions,
         array $missingDefinitions = []
     ) {
-        $this->helper->shouldReceive("findNextParameter")->passthru();
-        $this->helper->shouldReceive("replaceParameterReference")->passthru();
+        $this->referenceHelper->shouldReceive("findNextParameter")->passthru();
+        $this->referenceHelper->shouldReceive("replaceParameterReference")->passthru();
 
         $this->standardTest($definitions, $expectedDefinitions, $missingDefinitions);
     }
 
-    public function parameterDefinitionsProvider(): array
+    public static function parameterDefinitionsProvider(): array
     {
         return [
             //*
@@ -630,24 +620,18 @@ class NamespaceNormaliserTest extends TestCase
         ];
     }
 
-    /**
-     * @dataProvider serviceDefinitionsProvider
-     *
-     * @param array $definitions
-     * @param array $expectedDefinitions
-     * @param array $missingDefinitions
-     */
+    #[DataProvider("serviceDefinitionsProvider")]
     public function testNamespacingServices(
         array $definitions,
         array $expectedDefinitions,
         array $missingDefinitions = []
     ) {
-        $this->helper->shouldReceive("findNextParameter")->andReturnNull();
+        $this->referenceHelper->shouldReceive("findNextParameter")->andReturnNull();
 
         $this->standardTest($definitions, $expectedDefinitions, $missingDefinitions);
     }
 
-    public function serviceDefinitionsProvider(): array
+    public static function serviceDefinitionsProvider(): array
     {
         return [
             "keys are namespaced" => [

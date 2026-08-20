@@ -2,10 +2,10 @@
 
 namespace Lexide\Syringe\Test\Integration\Namespacing;
 
-use Lexide\Syringe\ContainerBuilder;
+use Lexide\Syringe\Container\ContainerBuilder;
 use Lexide\Syringe\Loader\JsonLoader;
 use Lexide\Syringe\Loader\YamlLoader;
-use Lexide\Syringe\ReferenceResolver;
+use Lexide\Syringe\Reference\ReferenceResolver;
 use PHPUnit\Framework\TestCase;
 
 class NamespacingTest extends TestCase

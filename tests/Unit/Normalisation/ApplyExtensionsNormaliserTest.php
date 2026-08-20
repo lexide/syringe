@@ -2,11 +2,12 @@
 
 namespace Lexide\Syringe\Test\Unit\Normalisation;
 
-use Lexide\Syringe\Compiler\CompilationHelper;
+use Lexide\Syringe\Error\ErrorHelper;
+use Lexide\Syringe\Error\SyringeError;
 use Lexide\Syringe\Normalisation\ApplyExtensionsNormaliser;
-use Lexide\Syringe\Validation\ValidationError;
 use Mockery\Adapter\Phpunit\MockeryPHPUnitIntegration;
 use Mockery\MockInterface;
+use PHPUnit\Framework\Attributes\DataProvider;
 use PHPUnit\Framework\TestCase;
 
 class ApplyExtensionsNormaliserTest extends TestCase
@@ -15,34 +16,18 @@ class ApplyExtensionsNormaliserTest extends TestCase
     use NormalisationErrorTestTrait;
     use ExpectedDefinitionsTestTrait;
 
-    /**
-     * @var CompilationHelper|MockInterface
-     */
-    protected $helper;
-
-    /**
-     * @var ValidationError|MockInterface
-     */
-    protected $error;
-
     public function setUp(): void
     {
         $this->setupErrorMocks();
     }
 
-    /**
-     * @dataProvider normalisationProvider
-     *
-     * @param array $definitions
-     * @param array $expectedDefinitions
-     * @param array $expectedErrors
-     */
+    #[DataProvider("normalisationProvider")]
     public function testNormalisation(array $definitions, array $expectedDefinitions, array $expectedErrors = [])
     {
         $expectedErrorCount = count($expectedErrors);
         $this->configureErrorTests($expectedErrors);
 
-        $normaliser = new ApplyExtensionsNormaliser($this->helper);
+        $normaliser = new ApplyExtensionsNormaliser($this->errorHelper);
 
         [$normalisedDefinitions, $errors] = $normaliser->normalise($definitions);
 
@@ -55,7 +40,7 @@ class ApplyExtensionsNormaliserTest extends TestCase
     /**
      * @return array[]
      */
-    public function normalisationProvider(): array
+    public static function normalisationProvider(): array
     {
 
         $existingCall = ["foo" => "bar"];

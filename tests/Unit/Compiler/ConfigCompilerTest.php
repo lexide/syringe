@@ -3,12 +3,10 @@
 namespace Lexide\Syringe\Test\Unit\Compiler;
 
 use Lexide\Syringe\Compiler\ConfigCompiler;
-use Lexide\Syringe\Compiler\ConfigLoader;
+use Lexide\Syringe\Error\SyringeError;
 use Lexide\Syringe\Exception\ConfigException;
 use Lexide\Syringe\Normalisation\DefinitionsNormaliser;
 use Lexide\Syringe\Validation\ReferenceValidator;
-use Lexide\Syringe\Validation\SyntaxValidator;
-use Lexide\Syringe\Validation\ValidationError;
 use Mockery\Adapter\Phpunit\MockeryPHPUnitIntegration;
 use Mockery\MockInterface;
 use PHPUnit\Framework\TestCase;
@@ -18,133 +16,27 @@ class ConfigCompilerTest extends TestCase
 {
     use MockeryPHPUnitIntegration;
 
-    /**
-     * @var ConfigLoader|MockInterface
-     */
-    protected $configLoader;
-
-    /**
-     * @var SyntaxValidator|MockInterface
-     */
-    protected $syntaxValidator;
-
-    /**
-     * @var DefinitionsNormaliser|MockInterface
-     */
-    protected $definitionsNormaliser;
-
-    /**
-     * @var ReferenceValidator|MockInterface
-     */
-    protected $referenceValidator;
-
-    /**
-     * @var LoggerInterface|MockInterface
-     */
-    protected $errorLogger;
-
-    /**
-     * @var ValidationError|MockInterface
-     */
-    protected $error;
+    protected DefinitionsNormaliser|MockInterface $definitionsNormaliser;
+    protected ReferenceValidator|MockInterface $referenceValidator;
+    protected LoggerInterface|MockInterface $errorLogger;
+    protected SyringeError|MockInterface $error;
 
     public function setUp(): void
     {
-        $this->configLoader = \Mockery::mock(ConfigLoader::class);
-        $this->syntaxValidator = \Mockery::mock(SyntaxValidator::class);
         $this->definitionsNormaliser = \Mockery::mock(DefinitionsNormaliser::class);
         $this->referenceValidator = \Mockery::mock(ReferenceValidator::class);
         $this->errorLogger = \Mockery::mock(LoggerInterface::class);
-        $this->error = \Mockery::mock(ValidationError::class);
+        $this->error = \Mockery::mock(SyringeError::class);
         $this->error->shouldIgnoreMissing("foo");
         $this->error->shouldReceive("getContext")->andReturn([]);
     }
 
-    /**
-     * @dataProvider loadDefinitionsProvider
-     *
-     * @param array $files
-     * @param array $definitions
-     * @param array $expectedDefinitions
-     * @param array|string[] $expectedNamespaces
-     */
-    public function testLoadingDefinitions(array $files, array $definitions, array $expectedDefinitions, array $expectedNamespaces = [""])
-    {
-        $this->configLoader->shouldReceive("loadConfig")->andReturnUsing(function ($file, $relativeTo = "") use (&$definitions) {
-            $definitionKey = empty($relativeTo)? $file: "$relativeTo|$file";
-            $this->assertArrayHasKey($definitionKey, $definitions, "No definitions were found for the requested file '$file', relative to '$relativeTo'");
-            $return = $definitions[$definitionKey];
-            unset($definitions[$definitionKey]);
-            return [$return, $file];
-        });
-
-        $this->syntaxValidator->shouldReceive("validateFile")->andReturn([]);
-        $this->definitionsNormaliser->shouldReceive("normalise")->andReturnUsing(function ($definitions) {return [$definitions, []];});
-        $this->referenceValidator->shouldReceive("validate")->andReturn([]);
-
-        $compiler = $this->createCompiler();
-
-        ["definitions" => $result, "namespaces" => $namespaces] = $compiler->compile($files, []);
-
-        $this->assertEquals($expectedNamespaces, $namespaces);
-
-        foreach ($expectedDefinitions as $namespace => $expectedDefinition) {
-            $this->assertArrayHasKey($namespace, $result);
-            $this->assertEquals($result[$namespace], $expectedDefinition);
-            unset($result[$namespace]);
-        }
-
-        $this->assertEmpty($result, "More definitions were found than were expected");
-    }
-
-    /**
-     * @dataProvider syntaxErrorProvider
-     *
-     * @param array $definitions
-     * @param array $configFiles
-     * @throws ConfigException
-     * @throws \Lexide\Syringe\Exception\LoaderException
-     * @throws \Lexide\Syringe\Exception\ReferenceException
-     */
-    public function testSyntaxErrors(array $definitions, array $configFiles)
-    {
-        $this->configLoader->shouldReceive("loadConfig")->andReturnUsing(function ($file) use (&$definitions) {
-            $this->assertArrayHasKey($file, $definitions, "No definitions were found for the requested file '$file'");
-            $return = $definitions[$file];
-            return [$return, $file];
-        });
-
-        $totalErrors = 0;
-        $validationResults = [];
-        $definitionsCount = count($definitions);
-        for ($i = 1; $i <= $definitionsCount; ++$i) {
-            $errors = array_fill(0, $i, $this->error);
-            $validationResults[] = $errors;
-            $totalErrors += $i;
-        }
-        $this->syntaxValidator->shouldReceive("validateFile")->andReturnValues($validationResults);
-        $this->definitionsNormaliser->shouldNotReceive("normalise");
-        $this->referenceValidator->shouldNotReceive("validate");
-
-        $this->errorLogger->shouldReceive("log")->times($totalErrors);
-
-        $this->expectException(ConfigException::class);
-
-        $compiler = $this->createCompiler();
-
-        $compiler->compile($configFiles);
-
-    }
-
     public function testNormalisationErrors()
     {
-        $this->configLoader->shouldReceive("loadConfig")->andReturn([["foo" => "bar"], "baz"]);
-
         $errorCount = 3;
         $errors = array_fill(0, $errorCount, $this->error);
         $this->errorLogger->shouldReceive("log")->times($errorCount);
 
-        $this->syntaxValidator->shouldReceive("validateFile")->andReturn([]);
         $this->definitionsNormaliser->shouldReceive("normalise")->andReturn([[], $errors]);
         $this->referenceValidator->shouldNotReceive("validate");
 
@@ -156,13 +48,10 @@ class ConfigCompilerTest extends TestCase
 
     public function testReferenceErrors()
     {
-        $this->configLoader->shouldReceive("loadConfig")->andReturn([["foo" => "bar"], "baz"]);
-
         $errorCount = 4;
         $errors = array_fill(0, $errorCount, $this->error);
         $this->errorLogger->shouldReceive("log")->times($errorCount);
 
-        $this->syntaxValidator->shouldReceive("validateFile")->andReturn([]);
         $this->definitionsNormaliser->shouldReceive("normalise")->andReturn([[], []]);
         $this->referenceValidator->shouldReceive("validate")->andReturn($errors);
 
@@ -174,10 +63,6 @@ class ConfigCompilerTest extends TestCase
 
     public function testIgnoringWarnings()
     {
-
-        $this->configLoader->shouldReceive("loadConfig")->andReturn([["foo" => "bar"], "baz"]);
-
-        $options = ["ignoreWarnings" => true];
         $this->error->shouldReceive("getType")->andReturn("warning");
         $this->errorLogger->shouldNotReceive("log");
 
@@ -185,14 +70,13 @@ class ConfigCompilerTest extends TestCase
         $errors = array_fill(0, $errorCount, $this->error);
         $definitions = ["foo" => "bar"];
 
-        $this->syntaxValidator->shouldReceive("validateFile")->andReturn([]);
         $this->definitionsNormaliser->shouldReceive("normalise")->andReturn([$definitions, []]);
         $this->referenceValidator->shouldReceive("validate")->andReturn($errors);
 
         $compiler = $this->createCompiler();
         ["definitions" => $compiledDefinitions] = $compiler->compile(
             [["file" => "blah", "namespace" => ""]],
-            $options
+            true
         );
 
         $this->assertSame($definitions, $compiledDefinitions);
@@ -201,8 +85,6 @@ class ConfigCompilerTest extends TestCase
     protected function createCompiler(): ConfigCompiler
     {
         return new ConfigCompiler(
-            $this->configLoader,
-            $this->syntaxValidator,
             $this->definitionsNormaliser,
             $this->referenceValidator,
             $this->errorLogger

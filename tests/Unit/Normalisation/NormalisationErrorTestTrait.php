@@ -2,8 +2,8 @@
 
 namespace Lexide\Syringe\Test\Unit\Normalisation;
 
-use Lexide\Syringe\Compiler\CompilationHelper;
-use Lexide\Syringe\Validation\ValidationError;
+use Lexide\Syringe\Error\ErrorHelper;
+use Lexide\Syringe\Error\SyringeError;
 use Mockery\MockInterface;
 
 /**
@@ -12,28 +12,21 @@ use Mockery\MockInterface;
 trait NormalisationErrorTestTrait
 {
 
-    /**
-     * @var CompilationHelper|MockInterface
-     */
-    protected $helper;
+    protected ErrorHelper|MockInterface $errorHelper;
+    protected SyringeError|MockInterface $error;
 
-    /**
-     * @var ValidationError|MockInterface
-     */
-    protected $error;
-
-    protected function setupErrorMocks()
+    protected function setupErrorMocks(): void
     {
-        $this->helper = \Mockery::mock(CompilationHelper::class);
-        $this->error = \Mockery::mock(ValidationError::class);
+        $this->errorHelper = \Mockery::mock(ErrorHelper::class);
+        $this->error = \Mockery::mock(SyringeError::class);
     }
 
     /**
      * @param array $expectedErrors - passed by-reference
      */
-    protected function configureErrorTests(array &$expectedErrors)
+    protected function configureErrorTests(array &$expectedErrors): void
     {
-        $this->helper->shouldReceive("normalisationError")->andReturnUsing(function ($message) use (&$expectedErrors) {
+        $this->errorHelper->shouldReceive("normalisationError")->andReturnUsing(function ($message) use (&$expectedErrors) {
             foreach ($expectedErrors as $i => $expectedErrorRegex) {
                 if (preg_match($expectedErrorRegex, $message)) {
                     unset($expectedErrors[$i]);

@@ -2,11 +2,13 @@
 
 namespace Lexide\Syringe\Test\Unit\Validation;
 
-use Lexide\Syringe\Compiler\CompilationHelper;
+use Lexide\Syringe\Error\ErrorHelper;
+use Lexide\Syringe\Error\SyringeError;
+use Lexide\Syringe\Reference\ReferenceHelper;
 use Lexide\Syringe\Validation\ReferenceValidatorHelper;
-use Lexide\Syringe\Validation\ValidationError;
 use Mockery\Adapter\Phpunit\MockeryPHPUnitIntegration;
 use Mockery\MockInterface;
+use PHPUnit\Framework\Attributes\DataProvider;
 use PHPUnit\Framework\TestCase;
 
 class ReferenceValidatorHelperTest extends TestCase
@@ -15,31 +17,18 @@ class ReferenceValidatorHelperTest extends TestCase
 
     const TEST = 'test';
 
-    /**
-     * @var CompilationHelper|MockInterface
-     */
-    protected $helper;
-
-    /**
-     * @var ValidationError|MockInterface
-     */
-    protected $error;
+    protected ReferenceHelper|MockInterface $referenceHelper;
+    protected ErrorHelper|MockInterface $errorHelper;
+    protected SyringeError|MockInterface $error;
 
     public function setUp(): void
     {
-        $this->helper = \Mockery::mock(CompilationHelper::class);
-        $this->error = \Mockery::mock(ValidationError::class);
+        $this->referenceHelper = \Mockery::mock(ReferenceHelper::class);
+        $this->errorHelper = \Mockery::mock(ErrorHelper::class);
+        $this->error = \Mockery::mock(SyringeError::class);
     }
 
-    /**
-     * @dataProvider parametersProvider
-     *
-     * @param array $definedParameters
-     * @param array $foundParameters
-     * @param array $expectedErrors
-     * @param array $expectedReferences
-     * @param bool $skipParameters
-     */
+    #[DataProvider("parametersProvider")]
     public function testParameterReferences(
         array $definedParameters,
         array $foundParameters,
@@ -51,7 +40,7 @@ class ReferenceValidatorHelperTest extends TestCase
         $errorCount = count($expectedErrors);
 
         foreach ($foundParameters as $parameter) {
-            $this->helper
+            $this->referenceHelper
                 ->shouldReceive("replaceParameterReference")
                 ->with(\Mockery::any(), $parameter, '', true)
                 ->times($skipParameters? 0: 1)
@@ -59,9 +48,9 @@ class ReferenceValidatorHelperTest extends TestCase
         }
 
         $foundParameters[] = null;
-        $this->helper->shouldReceive("findNextParameter")->andReturnValues($foundParameters);
+        $this->referenceHelper->shouldReceive("findNextParameter")->andReturnValues($foundParameters);
 
-        $this->helper->shouldReceive("referenceError")->andReturnUsing(function ($message) use (&$expectedErrors) {
+        $this->errorHelper->shouldReceive("referenceError")->andReturnUsing(function ($message) use (&$expectedErrors) {
             foreach ($expectedErrors as $i => $expectedError) {
                 if (preg_match($expectedError, $message)) {
                     unset($expectedErrors[$i]);
@@ -71,7 +60,7 @@ class ReferenceValidatorHelperTest extends TestCase
             $this->fail("The validation error message '$message' was not expected (could it have been raised twice?)");
         });
 
-        $helper = new ReferenceValidatorHelper($this->helper);
+        $helper = new ReferenceValidatorHelper($this->referenceHelper, $this->errorHelper);
         $helper->setDefinitions(["parameters" => $definedParameters]);
 
         [$errors, $references] = $helper->checkParameterReferences("anything", ["skipParameters" => $skipParameters]);
@@ -97,29 +86,23 @@ class ReferenceValidatorHelperTest extends TestCase
         $max = 5;
 
         $this->expectException(\LogicException::class);
-        $this->helper->shouldReceive("findNextParameter")->times($max + 1)->andReturn("foo");
-        $this->helper->shouldReceive("replaceParameterReference")->andReturnArg(0);
+        $this->referenceHelper->shouldReceive("findNextParameter")->times($max + 1)->andReturn("foo");
+        $this->referenceHelper->shouldReceive("replaceParameterReference")->andReturnArg(0);
 
-        $helper = new ReferenceValidatorHelper($this->helper, $max);
+        $helper = new ReferenceValidatorHelper($this->referenceHelper, $this->errorHelper, $max);
         $helper->setDefinitions(["parameters" => ["foo" => "bar"]]);
 
         $helper->checkParameterReferences("foo");
     }
 
-    /**
-     * @dataProvider constantProvider
-     *
-     * @param array $constants
-     * @param array $expectedErrors
-     * @param array $options
-     */
+    #[DataProvider("constantProvider")]
     public function testConstantReferences(array $constants, array $expectedErrors, bool $skipConstants = false)
     {
 
         $errorCount = count($expectedErrors);
 
         foreach ($constants as $constant) {
-            $this->helper
+            $this->referenceHelper
                 ->shouldReceive("replaceConstantReference")
                 ->with(\Mockery::any(), $constant, '', true)
                 ->times($skipConstants? 0: 1)
@@ -127,9 +110,9 @@ class ReferenceValidatorHelperTest extends TestCase
         }
 
         $constants[] = null;
-        $this->helper->shouldReceive("findNextConstant")->andReturnValues($constants);
+        $this->referenceHelper->shouldReceive("findNextConstant")->andReturnValues($constants);
 
-        $this->helper->shouldReceive("referenceError")->andReturnUsing(function ($message) use (&$expectedErrors) {
+        $this->errorHelper->shouldReceive("referenceError")->andReturnUsing(function ($message) use (&$expectedErrors) {
             foreach ($expectedErrors as $i => $expectedError) {
                 if (preg_match($expectedError, $message)) {
                     unset($expectedErrors[$i]);
@@ -139,7 +122,7 @@ class ReferenceValidatorHelperTest extends TestCase
             $this->fail("The validation error message '$message' was not expected (could it have been raised twice?)");
         });
 
-        $helper = new ReferenceValidatorHelper($this->helper);
+        $helper = new ReferenceValidatorHelper($this->referenceHelper, $this->errorHelper);
 
         $errors = $helper->checkConstantReferences("anything", ["skipConstants" => $skipConstants]);
 
@@ -148,45 +131,31 @@ class ReferenceValidatorHelperTest extends TestCase
         $this->assertEmpty($expectedErrors, "There were expected errors that were not raised");
     }
 
-    /**
-     * @dataProvider servicesProvider
-     *
-     * @param array $services
-     * @param string $value
-     * @param bool|string $expected
-     * @param array $options
-     */
+    #[DataProvider("servicesProvider")]
     public function testServiceReferences(
         array $services,
         string $value,
         bool $isService,
-        $expected,
+        bool|string $expected,
         array $options = []
     ) {
-        $this->helper->shouldReceive("isServiceReference")->andReturn($isService);
-        $this->helper->shouldReceive("getServiceKey")->andReturnArg(0);
+        $this->referenceHelper->shouldReceive("isServiceReference")->andReturn($isService);
+        $this->referenceHelper->shouldReceive("getServiceKey")->andReturnArg(0);
 
-        $helper = new ReferenceValidatorHelper($this->helper);
+        $helper = new ReferenceValidatorHelper($this->referenceHelper, $this->errorHelper);
         $helper->setDefinitions(["services" => $services]);
 
         $this->assertSame($expected, $helper->checkServiceReference($value, $options));
     }
 
-    /**
-     * @dataProvider circularReferenceProvider
-     *
-     * @param string $service
-     * @param bool $result
-     * @param array $references
-     * @param array $secondaryReferences
-     */
+    #[DataProvider("circularReferenceProvider")]
     public function testCircularReferences(
         string $service,
         bool $result,
         array $references,
         array $secondaryReferences = []
     ) {
-        $helper = new ReferenceValidatorHelper($this->helper);
+        $helper = new ReferenceValidatorHelper($this->referenceHelper, $this->errorHelper);
 
         $this->assertSame($result, $helper->findCircularReferences($service, $references, $secondaryReferences));
     }
@@ -194,7 +163,7 @@ class ReferenceValidatorHelperTest extends TestCase
     /**
      * @return array
      */
-    public function parametersProvider(): array
+    public static function parametersProvider(): array
     {
         return [
             "No references" => [
@@ -246,7 +215,7 @@ class ReferenceValidatorHelperTest extends TestCase
     /**
      * @return array
      */
-    public function constantProvider(): array
+    public static function constantProvider(): array
     {
         return [
             "No constant references" => [
@@ -292,7 +261,7 @@ class ReferenceValidatorHelperTest extends TestCase
     /**
      * @return array[]
      */
-    public function servicesProvider(): array
+    public static function servicesProvider(): array
     {
         return [
             "Not a service reference" => [
@@ -333,7 +302,7 @@ class ReferenceValidatorHelperTest extends TestCase
     /**
      * @return array[]
      */
-    public function circularReferenceProvider(): array
+    public static function circularReferenceProvider(): array
     {
         return [
             "service has no references" => [
