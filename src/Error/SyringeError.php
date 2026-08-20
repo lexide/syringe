@@ -1,24 +1,13 @@
 <?php
 
-namespace Lexide\Syringe\Validation;
+namespace Lexide\Syringe\Error;
 
-class ValidationError
+class SyringeError
 {
 
-    /**
-     * @var string
-     */
-    protected $type;
-
-    /**
-     * @var string
-     */
-    protected $message;
-
-    /**
-     * @var array
-     */
-    protected $context;
+    protected string $type;
+    protected string $message;
+    protected array $context;
 
     /**
      * @param string $type
@@ -52,7 +41,7 @@ class ValidationError
      * @param string $key
      * @param mixed $value
      */
-    public function addContext(string $key, $value): void
+    public function addContext(string $key, mixed $value): void
     {
         $this->context[$key] = $value;
     }
