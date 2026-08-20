@@ -2,20 +2,17 @@
 
 namespace Lexide\Syringe\Normalisation;
 
-use Lexide\Syringe\Compiler\CompilationHelper;
+use Lexide\Syringe\Error\ErrorHelper;
 
 class ApplyExtensionsNormaliser
 {
 
-    /**
-     * @var CompilationHelper
-     */
-    protected $helper;
+    protected ErrorHelper $helper;
 
     /**
-     * @param CompilationHelper $helper
+     * @param ErrorHelper $helper
      */
-    public function __construct(CompilationHelper $helper)
+    public function __construct(ErrorHelper $helper)
     {
         $this->helper = $helper;
     }

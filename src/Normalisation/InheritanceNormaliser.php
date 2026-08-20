@@ -2,22 +2,23 @@
 
 namespace Lexide\Syringe\Normalisation;
 
-use Lexide\Syringe\Compiler\CompilationHelper;
+use Lexide\Syringe\Error\ErrorHelper;
+use Lexide\Syringe\Reference\ReferenceHelper;
 
 class InheritanceNormaliser
 {
 
-    /**
-     * @var CompilationHelper
-     */
-    protected $helper;
+    protected ReferenceHelper $referenceHelper;
+    protected ErrorHelper $errorHelper;
 
     /**
-     * @param CompilationHelper $helper
+     * @param ReferenceHelper $referenceHelper
+     * @param ErrorHelper $errorHelper
      */
-    public function __construct(CompilationHelper $helper)
+    public function __construct(ReferenceHelper $referenceHelper, ErrorHelper $errorHelper)
     {
-        $this->helper = $helper;
+        $this->referenceHelper = $referenceHelper;
+        $this->errorHelper = $errorHelper;
     }
 
     /**
@@ -43,10 +44,10 @@ class InheritanceNormaliser
         foreach ($services as $key => $service) {
             $chain = [];
             while (!empty($service["extends"])) {
-                $extends = $service["extends"];
+                $extends = $this->referenceHelper->getServiceKey($service["extends"]);
                 unset($service["extends"]);
                 if (empty($abstractServices[$extends])) {
-                    $errors[] = $this->helper->normalisationError(
+                    $errors[] = $this->errorHelper->normalisationError(
                         "The service definition for '$key' extends '$extends', which is not an abstract service",
                         ["service" => $key]
                     );
@@ -56,7 +57,7 @@ class InheritanceNormaliser
                 // check for circular inheritance
                 if (in_array($extends, $chain)) {
                     $chain[] = $extends;
-                    $errors[] = $this->helper->normalisationError(
+                    $errors[] = $this->errorHelper->normalisationError(
                         "The service definition for '$key' has circular inheritance",
                         ["service" => $key, "chain" => $chain]
                     );

@@ -7,30 +7,12 @@ use Lexide\Syringe\Exception\ReferenceException;
 class DefinitionsNormaliser
 {
 
-    /**
-     * @var ExtensionCallsNormaliser
-     */
-    protected $extensionCallsNormaliser;
-
-    /**
-     * @var NamespaceNormaliser
-     */
-    protected $namespaceNormaliser;
-
-    /**
-     * @var InheritanceNormaliser
-     */
-    protected $inheritanceNormaliser;
-
-    /**
-     * @var ApplyExtensionsNormaliser
-     */
-    protected $applyExtensionsNormaliser;
-
-    /**
-     * @var TagNormaliser
-     */
-    protected $tagNormaliser;
+    protected ExtensionCallsNormaliser $extensionCallsNormaliser;
+    protected NamespaceNormaliser$namespaceNormaliser;
+    protected InheritanceNormaliser$inheritanceNormaliser;
+    protected ApplyExtensionsNormaliser $applyExtensionsNormaliser;
+    protected TagNormaliser $tagNormaliser;
+    protected CallArgumentsNormaliser $callArgumentsNormaliser;
 
     /**
      * @param ExtensionCallsNormaliser $extensionCallsNormaliser
@@ -38,19 +20,22 @@ class DefinitionsNormaliser
      * @param InheritanceNormaliser $inheritanceNormaliser
      * @param ApplyExtensionsNormaliser $applyExtensionsNormaliser
      * @param TagNormaliser $tagNormaliser
+     * @param CallArgumentsNormaliser $callArgumentsNormaliser
      */
     public function __construct(
         ExtensionCallsNormaliser $extensionCallsNormaliser,
         NamespaceNormaliser $namespaceNormaliser,
         InheritanceNormaliser $inheritanceNormaliser,
         ApplyExtensionsNormaliser $applyExtensionsNormaliser,
-        TagNormaliser $tagNormaliser
+        TagNormaliser $tagNormaliser,
+        CallArgumentsNormaliser $callArgumentsNormaliser
     ) {
         $this->extensionCallsNormaliser = $extensionCallsNormaliser;
         $this->namespaceNormaliser = $namespaceNormaliser;
         $this->inheritanceNormaliser = $inheritanceNormaliser;
         $this->applyExtensionsNormaliser = $applyExtensionsNormaliser;
         $this->tagNormaliser = $tagNormaliser;
+        $this->callArgumentsNormaliser = $callArgumentsNormaliser;
     }
 
     /**
@@ -76,7 +61,11 @@ class DefinitionsNormaliser
 
         [$definitions, $errors] = $this->applyExtensionsNormaliser->normalise($definitions);
 
-        return [$this->tagNormaliser->normalise($definitions), $errors];
+        $definitions = $this->callArgumentsNormaliser->normalise(
+            $this->tagNormaliser->normalise($definitions)
+        );
+
+        return [$definitions, $errors];
     }
 
 }
