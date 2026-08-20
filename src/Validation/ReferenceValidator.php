@@ -2,29 +2,26 @@
 
 namespace Lexide\Syringe\Validation;
 
-use Lexide\Syringe\Compiler\CompilationHelper;
+use Lexide\Syringe\Error\ErrorHelper;
+use Lexide\Syringe\Reference\ReferenceHelper;
 
 class ReferenceValidator
 {
 
-    /**
-     * @var ReferenceValidatorHelper
-     */
-    protected $referenceHelper;
+    protected ReferenceValidatorHelper $validatorHelper;
+    protected ReferenceHelper $referenceHelper;
+    protected ErrorHelper $errorHelper;
 
     /**
-     * @var CompilationHelper
+     * @param ReferenceValidatorHelper $validatorHelper
+     * @param ReferenceHelper $referenceHelper
+     * @param ErrorHelper $errorHelper
      */
-    protected $compilationHelper;
-
-    /**
-     * @param ReferenceValidatorHelper $referenceHelper
-     * @param CompilationHelper $compilationHelper
-     */
-    public function __construct(ReferenceValidatorHelper $referenceHelper, CompilationHelper $compilationHelper)
+    public function __construct(ReferenceValidatorHelper $validatorHelper, ReferenceHelper $referenceHelper, ErrorHelper $errorHelper)
     {
+        $this->validatorHelper = $validatorHelper;
         $this->referenceHelper = $referenceHelper;
-        $this->compilationHelper = $compilationHelper;
+        $this->errorHelper = $errorHelper;
     }
 
     /**
@@ -33,7 +30,7 @@ class ReferenceValidator
      */
     public function validate(array $definitions): array
     {
-        $this->referenceHelper->setDefinitions($definitions);
+        $this->validatorHelper->setDefinitions($definitions);
         return array_merge(
             $this->validateParameters($definitions),
             $this->validateServices($definitions)
@@ -50,18 +47,18 @@ class ReferenceValidator
             return [];
         }
         if (!is_array($definitions["parameters"])) {
-            return [$this->compilationHelper->referenceError("The value for 'parameters' is not an array")];
+            return [$this->errorHelper->referenceError("The value for 'parameters' is not an array")];
         }
 
         $errors = [];
 
         $parameterReferences = [];
         foreach ($definitions["parameters"] as $parameter => $value) {
-            [$parameterErrors, $references] = $this->referenceHelper->checkValueForReferences(
+            [$parameterErrors, $references] = $this->validatorHelper->checkValueForReferences(
                 $value,
                 ["skipServices" => true]
             );
-            $parameterReferences = $this->referenceHelper->addReference($parameterReferences, $parameter, $references);
+            $parameterReferences = $this->validatorHelper->addReference($parameterReferences, $parameter, $references);
             foreach ($parameterErrors as $error) {
                 $error->addContext("parameter", $parameter);
             }
@@ -70,8 +67,8 @@ class ReferenceValidator
 
         // add any errors regarding circular references
         foreach (array_keys($parameterReferences) as $parameter) {
-            if ($this->referenceHelper->findCircularReferences($parameter, $parameterReferences)) {
-                $circularReferenceError = $this->compilationHelper->referenceError(
+            if ($this->validatorHelper->findCircularReferences($parameter, $parameterReferences)) {
+                $circularReferenceError = $this->errorHelper->referenceError(
                     "A circular reference was found for the parameter '$parameter'"
                 );
                 $circularReferenceError->addContext("parameter", $parameter);
@@ -92,7 +89,7 @@ class ReferenceValidator
             return [];
         }
         if (!is_array($definitions["services"])) {
-            return [$this->compilationHelper->referenceError("The value for 'services' is not an array")];
+            return [$this->errorHelper->referenceError("The value for 'services' is not an array")];
         }
 
         $errors = [];
@@ -101,7 +98,7 @@ class ReferenceValidator
         foreach ($definitions["services"] as $service => $definition) {
 
             if (!is_array($definition)) {
-                $serviceError = $this->compilationHelper->referenceError(
+                $serviceError = $this->errorHelper->referenceError(
                     "The service definition for '$service' was not an array"
                 );
                 $serviceError->addContext("service", $service);
@@ -111,19 +108,23 @@ class ReferenceValidator
 
             $serviceErrors = [];
 
-            if (!empty($definition["class"]) && !class_exists($definition["class"])) {
-                // TODO: allow classes to be defined by parameter
-                $serviceErrors[] = $this->compilationHelper->referenceError(
-                    "The class {$definition["class"]} does not exist"
-                );
+            $classExists = false;
+            if (!empty($definition["class"])) {
+                if (!class_exists($definition["class"])) {
+                    $serviceErrors[] = $this->errorHelper->referenceError(
+                        "The class {$definition["class"]} does not exist"
+                    );
+                } else {
+                    $classExists = true;
+                }
             }
 
             if (!empty($definition["arguments"])) {
-                [$argumentErrors, $argumentReferences] = $this->referenceHelper->checkArrayForReferences(
+                [$argumentErrors, $argumentReferences] = $this->validatorHelper->checkArrayForReferences(
                     $definition["arguments"]
                 );
                 $serviceErrors = array_merge($serviceErrors, $argumentErrors);
-                $serviceReferences = $this->referenceHelper->addReference(
+                $serviceReferences = $this->validatorHelper->addReference(
                     $serviceReferences,
                     $service,
                     $argumentReferences
@@ -136,14 +137,14 @@ class ReferenceValidator
 
             if (!empty($definition["factoryService"])) {
                 $factoryService = $definition["factoryService"];
-                $serviceKey = $this->compilationHelper->getServiceKey($factoryService);
+                $serviceKey = $this->referenceHelper->getServiceKey($factoryService);
 
-                if ($this->referenceHelper->checkServiceReference($factoryService) === false) {
-                    $serviceErrors[] = $this->compilationHelper->referenceError(
+                if ($this->validatorHelper->checkServiceReference($factoryService) === false) {
+                    $serviceErrors[] = $this->errorHelper->referenceError(
                         "The factory service '$serviceKey' does not exist"
                     );
                 } else {
-                    $serviceReferences = $this->referenceHelper->addReference(
+                    $serviceReferences = $this->validatorHelper->addReference(
                         $serviceReferences,
                         $service,
                         $serviceKey
@@ -156,13 +157,13 @@ class ReferenceValidator
 
             if (!empty($definition["factoryClass"])) {
                 if (!empty($definition["factoryService"])) {
-                    $serviceErrors[] = $this->compilationHelper->referenceError(
+                    $serviceErrors[] = $this->errorHelper->referenceError(
                         "Cannot use both factoryService and factoryClass directives in the same service definition"
                     );
                     unset($factoryClass); // don't check the factory method in this scenario
 
                 } elseif (!class_exists($definition["factoryClass"])) {
-                    $serviceErrors[] = $this->compilationHelper->referenceError(
+                    $serviceErrors[] = $this->errorHelper->referenceError(
                         "The factory class '{$definition["factoryClass"]}' does not exist"
                     );
 
@@ -179,13 +180,13 @@ class ReferenceValidator
 
                     $method = $definition["factoryMethod"];
                     if (!method_exists($factoryClass, $method)) {
-                        $serviceErrors[] = $this->compilationHelper->referenceError(
+                        $serviceErrors[] = $this->errorHelper->referenceError(
                             "The factory method '$method' does not exist on the class '$factoryClass'"
                         );
                     } elseif ($needsStaticFactoryMethod) {
                         $factoryMethod = new \ReflectionMethod($factoryClass, $method);
                         if (!$factoryMethod->isStatic()) {
-                            $serviceErrors[] = $this->compilationHelper->referenceError(
+                            $serviceErrors[] = $this->errorHelper->referenceError(
                                 "The factory class method '$factoryClass::$method' is not a static method"
                             );
                         }
@@ -196,13 +197,13 @@ class ReferenceValidator
 
             if (!empty($definition["aliasOf"])) {
                 $aliasOf = $definition["aliasOf"];
-                $serviceKey = $this->compilationHelper->getServiceKey($aliasOf);
-                if ($this->referenceHelper->checkServiceReference($aliasOf) === false) {
-                    $serviceErrors[] = $this->compilationHelper->referenceError(
+                $serviceKey = $this->referenceHelper->getServiceKey($aliasOf);
+                if ($this->validatorHelper->checkServiceReference($aliasOf) === false) {
+                    $serviceErrors[] = $this->errorHelper->referenceError(
                         "The alias '$serviceKey' does not exist"
                     );
                 } else {
-                    $serviceReferences = $this->referenceHelper->addReference(
+                    $serviceReferences = $this->validatorHelper->addReference(
                         $serviceReferences,
                         $service,
                         $serviceKey
@@ -212,18 +213,18 @@ class ReferenceValidator
 
             if (!empty($definition["calls"])) {
                 foreach ($definition["calls"] as $callDefinition) {
-                    if (!method_exists($definition["class"], $callDefinition["method"])) {
-                        $serviceErrors[] = $this->compilationHelper->referenceError(
+                    if ($classExists && !method_exists($definition["class"], $callDefinition["method"])) {
+                        $serviceErrors[] = $this->errorHelper->referenceError(
                             "The call method '{$callDefinition["method"]}' " .
                             "does not exist on the service class '{$definition["class"]}'"
                         );
                     }
                     if (!empty($callDefinition["arguments"])) {
-                        [$argumentErrors, $argumentReferences] = $this->referenceHelper->checkArrayForReferences(
+                        [$argumentErrors, $argumentReferences] = $this->validatorHelper->checkArrayForReferences(
                             $callDefinition["arguments"]
                         );
                         $serviceErrors = array_merge($serviceErrors, $argumentErrors);
-                        $serviceReferences = $this->referenceHelper->addReference(
+                        $serviceReferences = $this->validatorHelper->addReference(
                             $serviceReferences,
                             $service,
                             $argumentReferences
@@ -234,13 +235,13 @@ class ReferenceValidator
 
             if (!empty($definition["tags"])) {
                 foreach ($definition["tags"] as $tagDefinition) {
-                    [$tagErrors] = $this->referenceHelper->checkArrayForReferences(
+                    [$tagErrors] = $this->validatorHelper->checkArrayForReferences(
                         $tagDefinition,
                         ["skipServices" => true]
                     );
                     $serviceErrors = array_merge($serviceErrors, $tagErrors);
                     $tag = $tagDefinition["tag"];
-                    $tagReferences = $this->referenceHelper->addReference($tagReferences, $tag, $service);
+                    $tagReferences = $this->validatorHelper->addReference($tagReferences, $tag, $service);
                 }
             }
 
@@ -253,8 +254,8 @@ class ReferenceValidator
 
         // add any errors regarding circular references
         foreach (array_keys($serviceReferences) as $service) {
-            if ($this->referenceHelper->findCircularReferences($service, $serviceReferences, $tagReferences)) {
-                $circularReferenceError = $this->compilationHelper->referenceError(
+            if ($this->validatorHelper->findCircularReferences($service, $serviceReferences, $tagReferences)) {
+                $circularReferenceError = $this->errorHelper->referenceError(
                     "A circular reference was found for the service '$service'"
                 );
                 $circularReferenceError->addContext("service", $service);

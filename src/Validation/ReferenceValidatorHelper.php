@@ -2,40 +2,34 @@
 
 namespace Lexide\Syringe\Validation;
 
-use Lexide\Syringe\Compiler\CompilationHelper;
+use Lexide\Syringe\Error\ErrorHelper;
+use Lexide\Syringe\Error\SyringeError;
+use Lexide\Syringe\Reference\ReferenceHelper;
 
 class ReferenceValidatorHelper
 {
 
-    /**
-     * @var CompilationHelper
-     */
-    protected $compilationHelper;
+    protected ReferenceHelper $referenceHelper;
+    protected ErrorHelper $errorHelper;
+    protected int $maxParameterReferences;
+    protected array $definitions = [];
 
     /**
-     * @var int
-     */
-    protected $maxParameterReferences;
-
-    /**
-     * @var array
-     */
-    protected $definitions;
-
-    /**
-     * @param CompilationHelper $compilationHelper
+     * @param ReferenceHelper $referenceHelper
+     * @param ErrorHelper $errorHelper
      * @param int $maxParameterReferences - maximum number of parameter references inside a single parameter
      */
-    public function __construct(CompilationHelper $compilationHelper, int $maxParameterReferences = 100)
+    public function __construct(ReferenceHelper $referenceHelper, ErrorHelper $errorHelper, int $maxParameterReferences = 100)
     {
-        $this->compilationHelper = $compilationHelper;
+        $this->referenceHelper = $referenceHelper;
+        $this->errorHelper = $errorHelper;
         $this->maxParameterReferences = $maxParameterReferences;
     }
 
     /**
      * @param array $definitions
      */
-    public function setDefinitions(array $definitions)
+    public function setDefinitions(array $definitions): void
     {
         $this->definitions = $definitions;
     }
@@ -76,13 +70,27 @@ class ReferenceValidatorHelper
     }
 
     /**
-     * @param string $value
+     * @param mixed $value
      * @param array $options
      * @return array
      */
-    public function checkValueForReferences(string $value, array $options = []): array
+    public function checkValueForReferences(mixed $value, array $options = []): array
     {
         $errors = [];
+        if (is_array($value)) {
+            $references = [];
+            foreach ($value as $key => $element) {
+                [$keyErrors, $keyReferences] = $this->checkValueForReferences($key, $options);
+                [$elementErrors, $elementReferences] = $this->checkValueForReferences($element, $options);
+                $errors = array_merge($errors, $keyErrors, $elementErrors);
+                $references = array_merge($references, $keyReferences, $elementReferences);
+            }
+            return [$errors, $references];
+        }
+        if (!is_string($value)) {
+            return [[], []];
+        }
+
         $errors = array_merge($errors, $this->checkConstantReferences($value, $options));
 
         [$parameterErrors, $parameterReferences] = $this->checkParameterReferences($value, $options);
@@ -90,16 +98,18 @@ class ReferenceValidatorHelper
 
         $reference = $this->checkServiceReference($value, $options);
         if ($reference === false) {
-            $errors[] = $this->compilationHelper->referenceError("The service '$value' does not exist");
+            $errors[] = $this->errorHelper->referenceError("The reference '$value' does not exist");
+        } elseif (is_string($reference)) {
+            $parameterReferences[] = $reference;
         }
 
-        return [$errors, array_merge($parameterReferences, [$reference])];
+        return [$errors, $parameterReferences];
     }
 
     /**
      * @param string $value
      * @param array $options
-     * @return ValidationError[]
+     * @return array
      */
     public function checkParameterReferences(string $value, array $options = []): array
     {
@@ -114,14 +124,14 @@ class ReferenceValidatorHelper
         // sanity checking
         $counter = 0;
 
-        while (($parameter = $this->compilationHelper->findNextParameter($value)) !== null) {
+        while (($parameter = $this->referenceHelper->findNextParameter($value)) !== null) {
             if (!array_key_exists($parameter, $this->definitions["parameters"])) {
-                $errors[] = $this->compilationHelper->referenceError("The parameter '$parameter' does not exist");
+                $errors[] = $this->errorHelper->referenceError("The parameter '$parameter' does not exist");
             } else {
                 $references[] = $parameter;
             }
             // remove the reference so we skip over it
-            $value = $this->compilationHelper->replaceParameterReference($value, $parameter, '', true);
+            $value = $this->referenceHelper->replaceParameterReference($value, $parameter, '', true);
 
             if (++$counter > $this->maxParameterReferences) {
                 throw new \LogicException("Exceeded the maximum number of parameter matches ('$originalValue')");
@@ -134,7 +144,7 @@ class ReferenceValidatorHelper
     /**
      * @param string $value
      * @param array $options
-     * @return ValidationError[]
+     * @return SyringeError[]
      */
     public function checkConstantReferences(string $value, array $options = []): array
     {
@@ -144,7 +154,7 @@ class ReferenceValidatorHelper
 
         $errors = [];
 
-        while (($constant = $this->compilationHelper->findNextConstant($value)) !== null) {
+        while (($constant = $this->referenceHelper->findNextConstant($value)) !== null) {
 
             // if this is a class constant, check the class exists
             $classError = false;
@@ -152,7 +162,7 @@ class ReferenceValidatorHelper
             if (count($exploded) == 2) {
                 $className = $exploded[0];
                 if (!class_exists($className) && !interface_exists($className)) {
-                    $errors[] = $this->compilationHelper->referenceError(
+                    $errors[] = $this->errorHelper->referenceError(
                         "The class '$className' for constant '{$exploded[1]}' does not exist"
                     );
                     $classError = true;
@@ -160,9 +170,9 @@ class ReferenceValidatorHelper
             }
 
             if (!$classError && !defined($constant)) {
-                $errors[] = $this->compilationHelper->referenceError("The constant '$constant' does not exist");
+                $errors[] = $this->errorHelper->referenceError("The constant '$constant' does not exist");
             }
-            $value = $this->compilationHelper->replaceConstantReference($value, $constant, '', true);
+            $value = $this->referenceHelper->replaceConstantReference($value, $constant, '', true);
         }
 
         return $errors;
@@ -173,10 +183,10 @@ class ReferenceValidatorHelper
      * @param array $options
      * @return bool|string
      */
-    public function checkServiceReference(string $value, array $options = [])
+    public function checkServiceReference(string $value, array $options = []): string|bool
     {
-        if (empty($options["skipServices"]) && $this->compilationHelper->isServiceReference($value) ) {
-            $service = $this->compilationHelper->getServiceKey($value);
+        if (empty($options["skipServices"]) && $this->referenceHelper->isServiceReference($value) ) {
+            $service = $this->referenceHelper->getServiceKey($value);
             if (empty($this->definitions["services"][$service])) {
                 return false;
             }
@@ -191,7 +201,7 @@ class ReferenceValidatorHelper
      * @param string|array $reference
      * @return array
      */
-    public function addReference(array $references, string $key, $reference): array
+    public function addReference(array $references, string $key, string|array $reference): array
     {
         if (!is_array($reference)) {
             $reference = [$reference];
