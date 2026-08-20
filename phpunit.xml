@@ -1,13 +1,18 @@
 <?xml version="1.0" encoding="utf-8"?>
-<phpunit bootstrap="vendor/autoload.php" >
+<phpunit bootstrap="vendor/autoload.php">
     <testsuites>
         <testsuite name="unit-tests">
             <directory suffix=".php">tests/Unit</directory>
-            <exclude>tests/bootstrap.php</exclude>
+            <exclude>tests/Unit/Assertion/AssertionTestTrait.php</exclude>
+            <exclude>tests/Unit/Normalisation/ExpectedDefinitionsTestTrait.php</exclude>
+            <exclude>tests/Unit/Normalisation/NormalisationErrorTestTrait.php</exclude>
+            <exclude>tests/Unit/Reference/ReferenceTestMock.php</exclude>
+
         </testsuite>
         <testsuite name="integration-tests">
-            <directory suffix=".php">tests/integration</directory>
-            <exclude>tests/bootstrap.php</exclude>
+            <directory suffix=".php">tests/Integration</directory>
+            <exclude>tests/Integration/EchoLogger.php</exclude>
+            <exclude>tests/Integration/MockService.php</exclude>
         </testsuite>
     </testsuites>
 </phpunit>
