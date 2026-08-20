@@ -5,15 +5,8 @@ namespace Lexide\Syringe\Schema;
 class SchemaLintError
 {
 
-    /**
-     * @var string
-     */
-    protected $message;
-
-    /**
-     * @var array
-     */
-    protected $replacements;
+    protected string $message;
+    protected array $replacements;
 
     /**
      * @param string $message

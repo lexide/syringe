@@ -5,15 +5,8 @@ namespace Lexide\Syringe\Schema;
 class SchemaLinter
 {
 
-    /**
-     * @var mixed
-     */
-    protected $schemas;
-
-    /**
-     * @var string[]
-     */
-    protected $directiveList = [
+    protected array $schemata;
+    protected array $directiveList = [
         "type",
         "children",
         "element",
@@ -22,8 +15,7 @@ class SchemaLinter
         "warning",
         "oneOf"
     ];
-
-    protected $allowedTypes = [
+    protected array $allowedTypes = [
         "string",
         "number",
         "bool",
@@ -40,14 +32,18 @@ class SchemaLinter
      */
     public function lint(array $schemas): array
     {
-        if (empty($schemas["schemas"])) {
-            return [new SchemaLintError("No 'schemas' attribute was found")];
+        if (empty($schemas["schemata"])) {
+            return [new SchemaLintError("No 'schemata' attribute was found")];
+        }
+
+        if (!is_array($schemas["schemata"])) {
+            return [new SchemaLintError("'schemata' attribute was not an array")];
         }
 
         $errors = [];
-        $this->schemas = $schemas["schemas"];
+        $this->schemata = $schemas["schemata"];
 
-        foreach ($this->schemas as $schemaName => $schemaDefinition) {
+        foreach ($this->schemata as $schemaName => $schemaDefinition) {
             $errors = array_merge($errors, $this->lintSchema($schemaName, $schemaDefinition));
         }
 
@@ -85,7 +81,7 @@ class SchemaLinter
                     foreach ($value as $type) {
                         if (mb_strpos($type, "@") === 0) {
                             $schemaName = mb_substr($type, 1);
-                            if (!isset($this->schemas[$schemaName])) {
+                            if (!isset($this->schemata[$schemaName])) {
                                 $errors[] = new SchemaLintError("The %s directive for the %s schema refers to the %s schema which doesn't exist", [$directive, $name, $schemaName]);
                             }
                         } elseif (!in_array($type, $this->allowedTypes)) {
@@ -249,7 +245,7 @@ class SchemaLinter
      * @param mixed $value
      * @return bool
      */
-    protected function isNotStringOrStringList($value): bool
+    protected function isNotStringOrStringList(mixed $value): bool
     {
         $isError = true;
         if (is_string($value)) {
@@ -274,7 +270,7 @@ class SchemaLinter
      * @param mixed $value
      * @return bool
      */
-    protected function isNotSchema($value): bool
+    protected function isNotSchema(mixed $value): bool
     {
         $isNotSchema = false;
         if (is_array($value) && !empty($value)) {
