@@ -2,24 +2,25 @@
 
 namespace Lexide\Syringe\Normalisation;
 
-use Lexide\Syringe\Compiler\CompilationHelper;
-use Lexide\Syringe\ContainerBuilder;
+use Lexide\Syringe\Error\ErrorHelper;
 use Lexide\Syringe\Exception\ReferenceException;
+use Lexide\Syringe\Reference\Reference;
+use Lexide\Syringe\Reference\ReferenceHelper;
 
 class NamespaceNormaliser
 {
 
-    /**
-     * @var CompilationHelper
-     */
-    protected $helper;
+    protected ReferenceHelper $referenceHelper;
+    protected ErrorHelper $errorHelper;
 
     /**
-     * @param CompilationHelper $helper
+     * @param ReferenceHelper $referenceHelper
+     * @param ErrorHelper $errorHelper
      */
-    public function __construct(CompilationHelper $helper)
+    public function __construct(ReferenceHelper $referenceHelper, ErrorHelper $errorHelper)
     {
-        $this->helper = $helper;
+        $this->referenceHelper = $referenceHelper;
+        $this->errorHelper = $errorHelper;
     }
 
     /**
@@ -30,7 +31,7 @@ class NamespaceNormaliser
     public function normalise(array $namespaceDefinitions): array
     {
         $errors = [];
-        $normalisedDefinitions = ["parameters" => [], "services" => [], "extensions" => []];
+        $normalisedDefinitions = ["parameters" => [], "services" => [], "extensions" => [], "assertions" => []];
         $namespaces = array_keys($namespaceDefinitions);
 
         foreach ($namespaceDefinitions as $namespace => $definitions) {
@@ -54,11 +55,11 @@ class NamespaceNormaliser
                             !empty($namespace) // not the root namespace
                         ) {
                             $existingAliasNamespace = $this->getNamespaceFromKey(
-                                $this->helper->getServiceKey($normalisedDefinitions["services"][$key]["aliasOf"]),
+                                $this->referenceHelper->getServiceKey($normalisedDefinitions["services"][$key]["aliasOf"]),
                                 $namespaces
                             );
                             $thisAliasNamespace = $this->getNamespaceFromKey(
-                                $this->helper->getServiceKey($serviceDefinition["aliasOf"]),
+                                $this->referenceHelper->getServiceKey($serviceDefinition["aliasOf"]),
                                 $namespaces
                             );
                             $thisKeyNamespace = $this->getNamespaceFromKey($key, $namespaces);
@@ -75,7 +76,7 @@ class NamespaceNormaliser
                     } elseif (!isset($normalisedDefinitions["services"][$key]["aliasOf"])) {
                         // key collision
                         $reportNamespace = empty($namespace)? "root": "'$namespace'";
-                        $errors[] = $this->helper->normalisationError("The service '$key' has a definition in the $reportNamespace namespace, but has already been defined");
+                        $errors[] = $this->errorHelper->normalisationError("The service '$key' has a definition in the $reportNamespace namespace, but has already been defined");
                     }
                 }
 
@@ -85,6 +86,7 @@ class NamespaceNormaliser
             }
 
             // namespace parameter keys
+            $newParameters = [];
             foreach ($definitions["parameters"] ?? [] as $parameter => $value) {
                 $namespacedParameter = $this->normaliseNamespacedKey($parameter, $namespaces, $namespace);
 
@@ -97,14 +99,14 @@ class NamespaceNormaliser
                     break;
                 }
 
-                $normalisedDefinitions["parameters"][$namespacedParameter] = $value;
+                $newParameters[$namespacedParameter] = $value;
             }
 
             // namespace parameter values
             // TODO: can this be shortened to remove the array_replace()?
             $normalisedDefinitions["parameters"] = array_replace(
                 $normalisedDefinitions["parameters"],
-                $this->normaliseArray($normalisedDefinitions["parameters"], $namespaces, $namespace, false)
+                $this->normaliseArray($newParameters, $namespaces, $namespace, false)
             );
 
             foreach ($definitions["extensions"] ?? [] as $service => $extension) {
@@ -114,11 +116,21 @@ class NamespaceNormaliser
                 }
                 $normalisedDefinitions["extensions"][$service] = $this->mergeExtension($normalisedDefinitions["extensions"][$service] ?? [], $extension);
             }
+
+            foreach ($definitions["assertions"] ?? [] as $assertionDefinition) {
+                $assertionDefinition["reference"] = $this->normaliseNamespacedKey($assertionDefinition["reference"], $namespaces, $namespace);
+                $normalisedDefinitions["extensions"][] = $assertionDefinition;
+            }
         }
 
         return [$normalisedDefinitions, $errors];
     }
 
+    /**
+     * @param array $firstExtension
+     * @param array $secondExtension
+     * @return array|array[]
+     */
     protected function mergeExtension(array $firstExtension, array $secondExtension): array
     {
         if (empty($firstExtension)) {
@@ -135,6 +147,14 @@ class NamespaceNormaliser
         return $extension;
     }
 
+    /**
+     * @param array $array
+     * @param array $namespaces
+     * @param string $currentNamespace
+     * @param bool $checkSchemaKeys
+     * @param bool $normaliseKeys
+     * @return array
+     */
     protected function normaliseArray(
         array $array,
         array $namespaces,
@@ -170,24 +190,36 @@ class NamespaceNormaliser
         return $array;
     }
 
+    /**
+     * @param string $string
+     * @param array $namespaces
+     * @param string $currentNamespace
+     * @return string
+     */
     protected function normaliseString(string $string, array $namespaces, string $currentNamespace): string
     {
-        if ($this->helper->isServiceReference($string)) {
-            $key = $this->helper->getServiceKey($string);
+        if ($this->referenceHelper->isServiceReference($string)) {
+            $key = $this->referenceHelper->getServiceKey($string);
             $key = $this->normaliseNamespacedKey($key, $namespaces, $currentNamespace);
-            return $this->helper->getServiceReference($key);
+            return $this->referenceHelper->getServiceReference($key);
         }
         $offset = 0;
-        while(!is_null($parameter = $this->helper->findNextParameter($string, $offset))) {
+        while(!is_null($parameter = $this->referenceHelper->findNextParameter($string, $offset))) {
             $normalisedParameter = $this->normaliseNamespacedKey($parameter, $namespaces, $currentNamespace);
             if ($normalisedParameter != $parameter) {
-                $string = $this->helper->replaceParameterReference($string, $parameter, $normalisedParameter);
+                $string = $this->referenceHelper->replaceParameterReference($string, $parameter, $normalisedParameter);
             }
             $offset = strpos($string, $normalisedParameter, $offset) + strlen($normalisedParameter) + 1;
         }
         return $string;
     }
 
+    /**
+     * @param array $calls
+     * @param array $namespaces
+     * @param string $currentNamespace
+     * @return array
+     */
     protected function normaliseCalls(array $calls, array $namespaces, string $currentNamespace): array
     {
         foreach ($calls as $index => $call) {
@@ -217,7 +249,7 @@ class NamespaceNormaliser
      */
     protected function isKeyNamespaced(string $key, array $namespaces): bool
     {
-        $namespace = strstr($key, ContainerBuilder::NAMESPACE_SEPARATOR, true);
+        $namespace = strstr($key, Reference::NAMESPACE_SEPARATOR, true);
         if ($namespace === false) {
             return false;
         }
@@ -225,17 +257,28 @@ class NamespaceNormaliser
         return in_array($namespace, $namespaces);
     }
 
+    /**
+     * @param string $namespace
+     * @param string $key
+     * @return string
+     */
     protected function addNamespaceToKey(string $namespace, string $key): string
     {
         if (empty($namespace)) {
             return $key;
         }
-        return $namespace . ContainerBuilder::NAMESPACE_SEPARATOR . $key;
+        return $namespace . Reference::NAMESPACE_SEPARATOR . $key;
     }
 
+    /**
+     * @param string $namespacedKey
+     * @param array $namespaces
+     * @return string
+     * @throws ReferenceException
+     */
     protected function getNamespaceFromKey(string $namespacedKey, array $namespaces): string
     {
-        $separatorPos = strpos($namespacedKey, ContainerBuilder::NAMESPACE_SEPARATOR);
+        $separatorPos = strpos($namespacedKey, Reference::NAMESPACE_SEPARATOR);
         if ($separatorPos === false) {
             throw new ReferenceException("Can't get namespace. No separator found in key '$namespacedKey'");
         }
