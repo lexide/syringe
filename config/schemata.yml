@@ -1,4 +1,4 @@
-schemas:
+schemata:
   syringe:
     type: "object"
     children:
@@ -32,12 +32,34 @@ schemas:
               empty: false
               element:
                 type: "@call"
+      assertions:
+        type: "list"
+        element:
+          type: "object"
+          children:
+            reference:
+              type: "string"
+            checks:
+              type: "list"
+              element:
+                type: "object"
+                requiredChildren:
+                  assert: true
+                children:
+                  assert:
+                    type: "string"
+                  value:
+                    type:
+                      - "string"
+                      - "list"
+                      - "@schemataDefinition"
   service:
     type: "object"
     requiredChildren:
       class:
         ifNot:
           - "abstract"
+          - "aliasOf"
           - "stub"
       factoryMethod:
         if:
@@ -118,7 +140,7 @@ schemas:
               children:
                 tag:
                   type: "string"
-                name:
+                key:
                   type: "string"
                 order:
                   type: "number"
@@ -131,9 +153,53 @@ schemas:
                       - "number"
                       - "bool"
       - type: "object"
-        warning: "Using key/value tag definitions is deprecated. Please use a list of objects with 'name' or 'order' keys if you need to add context to a tag"
+        warning: "Using key/value tag definitions is deprecated. Please use a list of objects with 'value' or 'order' keys if you need to add context to a tag"
         element:
           type:
             - "string"
             - "number"
-
+  schemataDefinition:
+    type: "object"
+    children:
+      type:
+        type: "string"
+      warning:
+        type: "string"
+      empty:
+        type: "bool"
+      element:
+        type: "@schemataDefinition"
+        empty: false
+      children:
+        type: "object"
+        empty: false
+        element:
+          type: "@schemataDefinition"
+      oneOf:
+        type: "list"
+        empty: false
+        element:
+          type: "@schemataDefinition"
+      requiredChildren:
+        type: "object"
+        element:
+          oneOf:
+            - type: "bool"
+            - type: "object"
+              requiredChildren:
+                if:
+                  ifNot: "ifNot"
+                ifNot:
+                  ifNot: "if"
+              children:
+                if:
+                  type: "@condition"
+                ifNot:
+                  type: "@condition"
+  condition:
+    oneOf:
+      - type: "string"
+      - type: "list"
+        empty: false
+        element:
+          type: "string"
