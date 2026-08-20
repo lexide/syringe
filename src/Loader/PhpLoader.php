@@ -20,7 +20,7 @@ class PhpLoader implements LoaderInterface {
     /**
      * {@inheritDoc}
      */
-    public function supports($file): bool
+    public function supports(string $file): bool
     {
         return pathinfo($file, PATHINFO_EXTENSION) == "php";
     }
@@ -29,7 +29,7 @@ class PhpLoader implements LoaderInterface {
      * {@inheritDoc}
      * @throws LoaderException
      */
-    public function loadFile($file): array
+    public function loadFile(string $file): array
     {
         if (!file_exists($file)) {
             throw new LoaderException("Requested file '{$file}' doesn't exist");

@@ -10,15 +10,15 @@ interface LoaderInterface {
     public function getName(): string;
 
     /**
-     * @param $file
+     * @param string $file
      * @return bool
      */
-    public function supports($file): bool;
+    public function supports(string $file): bool;
 
     /**
-     * @param $file
+     * @param string $file
      * @return array
      */
-    public function loadFile($file): array;
+    public function loadFile(string $file): array;
 
 } 

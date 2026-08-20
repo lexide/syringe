@@ -8,10 +8,8 @@ use Symfony\Component\Yaml\Parser;
 
 class YamlLoader implements LoaderInterface
 {
-    /**
-     * @var bool
-     */
-    protected $useSymfony = false;
+
+    protected bool $useSymfony = false;
 
     /**
      * @param bool $forceSymfony
@@ -34,7 +32,7 @@ class YamlLoader implements LoaderInterface
     /**
      * {@inheritDoc}
      */
-    public function supports($file): bool
+    public function supports(string $file): bool
     {
         return (in_array(pathinfo($file, PATHINFO_EXTENSION), ["yml", "yaml"]));
     }
@@ -43,7 +41,7 @@ class YamlLoader implements LoaderInterface
      * {@inheritDoc}
      * @throws LoaderException
      */
-    public function loadFile($file): array
+    public function loadFile(string $file): array
     {
         if (!file_exists($file)) {
             throw new LoaderException("Requested YAML file '{$file}' doesn't exist");

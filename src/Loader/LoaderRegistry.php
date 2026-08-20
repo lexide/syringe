@@ -7,10 +7,7 @@ use Lexide\Syringe\Exception\LoaderException;
 class LoaderRegistry
 {
 
-    /**
-     * @var array
-     */
-    protected $loaders;
+    protected array $loaders;
 
     /**
      * @param LoaderInterface[] $loaders
