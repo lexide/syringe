@@ -18,7 +18,7 @@ class TagNormaliser
                     // old style named format
                     $tag = ["tag" => $index];
                     if (is_string($value)) {
-                        $tag["name"] = $value;
+                        $tag["key"] = $value;
                     } else {
                         $tag["order"] = $value;
                     }
