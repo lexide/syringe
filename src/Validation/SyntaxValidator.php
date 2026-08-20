@@ -2,69 +2,70 @@
 
 namespace Lexide\Syringe\Validation;
 
-use Lexide\Syringe\Compiler\CompilationHelper;
+use Lexide\Syringe\Error\ErrorHelper;
+use Lexide\Syringe\Error\SyringeError;
+use Lexide\Syringe\Reference\ReferenceHelper;
 
 class SyntaxValidator
 {
 
-    /**
-     * @var CompilationHelper
-     */
-    protected $compilationHelper;
+    protected ReferenceHelper $referenceHelper;
+    protected ErrorHelper $errorHelper;
+    protected TypeValidator $typeValidator;
+    protected array $schemata;
 
     /**
-     * @var array
+     * @param ReferenceHelper $referenceHelper
+     * @param ErrorHelper $errorHelper
+     * @param TypeValidator $typeValidator
+     * @param array $schemata
      */
-    protected $schemas;
-
-    /**
-     * @param CompilationHelper $compilationHelper
-     * @param array $schemas
-     */
-    public function __construct(CompilationHelper $compilationHelper, array $schemas)
+    public function __construct(ReferenceHelper $referenceHelper, ErrorHelper $errorHelper, TypeValidator $typeValidator, array $schemata)
     {
-        $this->compilationHelper = $compilationHelper;
-        $this->schemas = $schemas;
+        $this->referenceHelper = $referenceHelper;
+        $this->errorHelper = $errorHelper;
+        $this->typeValidator = $typeValidator;
+        $this->schemata = $schemata;
     }
 
     /**
      * @param array $definition
-     * @param string $fileName
+     * @param string $source
      * @return array
      */
-    public function validateFile(array $definition, string $fileName): array
+    public function validate(array $definition, string $source): array
     {
-        return $this->validateSchemaByName($definition, "syringe", $fileName);
+        return $this->validateSchemaByName($definition, "syringe", $source);
     }
 
     /**
      * @param array $definition
      * @param string $schemaName
-     * @param string $fileName
+     * @param string $source
      * @param string $elementPath
      * @return array
      */
     protected function validateSchemaByName(
-        array $definition,
+        mixed $definition,
         string $schemaName,
-        string $fileName,
+        string $source,
         string $elementPath = ''
     ): array {
-        $schema = $this->schemas[$schemaName];
-        return $this->validateSchema($definition, $schema, $fileName, $elementPath);
+        $schema = $this->schemata[$schemaName];
+        return $this->validateSchema($definition, $schema, $source, $elementPath);
     }
 
     /**
      * @param mixed $definition
      * @param array $schema
-     * @param string $fileName
+     * @param string $source
      * @param string $elementPath
      * @return array
      */
     protected function validateSchema(
-        $definition,
+        mixed $definition,
         array $schema,
-        string $fileName,
+        string $source,
         string $elementPath = ''
     ): array {
         $errors = [];
@@ -81,8 +82,9 @@ class SyntaxValidator
                             // schema reference
                             $errors = array_merge(
                                 $errors,
-                                $this->validateSchemaByName($definition, mb_substr($type, 1), $fileName, $elementPath)
+                                $this->validateSchemaByName($definition, mb_substr($type, 1), $source, $elementPath)
                             );
+                            break 2;
                         } elseif ($this->checkType($type, $definition)) {
                             // type checking passed, we're done with this directive
                             // break the switch
@@ -96,13 +98,13 @@ class SyntaxValidator
                         $valueText = implode("', '", $directive) . " or '$valueText";
                     }
 
-                    $errors[] = $this->syntaxError("The type for '$elementPath' is not '$valueText'", $fileName);
+                    $errors[] = $this->syntaxError("The type for '$elementPath' is not '$valueText'", $source);
                     break;
 
                 // validate the definition's children
                 case "children":
                     if (!is_array($definition)) {
-                        $errors[] = $this->syntaxError("'$elementPath' is not an object", $fileName);
+                        $errors[] = $this->syntaxError("'$elementPath' is not an object", $source);
                         break;
                     }
 
@@ -115,8 +117,8 @@ class SyntaxValidator
                                 $this->validateSchema(
                                     $definition[$child],
                                     $childSchema,
-                                    $fileName,
-                                    "$elementPath.$child"
+                                    $source,
+                                    implode(">", array_filter([$elementPath, "$child"]))
                                 )
                             );
                         }
@@ -126,8 +128,8 @@ class SyntaxValidator
                     if (!empty($childList)) {
                         $errors[] = $this->syntaxError(
                             "'$elementPath' contains child elements that are not allowed: '"
-                                . implode("', '", $childList) . "'",
-                            $fileName
+                                . implode("', '", array_keys($childList)) . "'",
+                            $source
                         );
                     }
 
@@ -136,7 +138,7 @@ class SyntaxValidator
                 // validate each element in the definition list
                 case "element":
                     if (!is_array($definition)) {
-                        $errors[] = $this->syntaxError("'$elementPath' is not an array", $fileName);
+                        $errors[] = $this->syntaxError("'$elementPath' is not an array", $source);
                         break;
                     }
 
@@ -144,7 +146,7 @@ class SyntaxValidator
                         // validate each element in the definition list
                         $errors = array_merge(
                             $errors,
-                            $this->validateSchema($element, $directive, $fileName, "$elementPath.$i")
+                            $this->validateSchema($element, $directive, $source, "$elementPath>$i")
                         );
                     }
                     break;
@@ -181,7 +183,7 @@ class SyntaxValidator
                         }
 
                         if ($shouldCheck && !isset($definition[$child])) {
-                            $errors[] = $this->syntaxError("The required '$child' attribute of '$elementPath' was missing", $fileName);
+                            $errors[] = $this->syntaxError("The required '$child' attribute of '$elementPath' was missing", $source);
                         }
                     }
                     break;
@@ -189,13 +191,13 @@ class SyntaxValidator
                 // validate that the definition is empty or not
                 case "empty":
                     if (empty($definition) xor $directive) {
-                        $errors[] = $this->syntaxError("'$elementPath' cannot be empty", $fileName);
+                        $errors[] = $this->syntaxError("'$elementPath' " . ($directive ? "must" : "cannot") . " be empty", $source);
                     }
                     break;
 
                 // raise warnings if necessary
                 case "warning":
-                    $errors[] = $this->warning($directive, $fileName);
+                    $errors[] = $this->warning($directive, $source);
                     break;
 
                 // ensure that the definition is valid against one of the listed schemas
@@ -211,13 +213,13 @@ class SyntaxValidator
                         // validate the definition according to this schema
                         $errors = array_merge(
                             $errors,
-                            $this->validateSchema($definition, $possibleSchema, $fileName, $elementPath)
+                            $this->validateSchema($definition, $possibleSchema, $source, $elementPath)
                         );
                         break;
                     }
 
                     if (!$matchedType) {
-                        $errors[] = $this->syntaxError("The definition for '$elementPath' is invalid", $fileName);
+                        $errors[] = $this->syntaxError("The definition for '$elementPath' is invalid", $source);
                     }
                     break;
             }
@@ -231,51 +233,15 @@ class SyntaxValidator
      * @param mixed $definition
      * @return bool
      */
-    protected function checkType(string $type, $definition): bool
+    protected function checkType(string $type, mixed $definition): bool
     {
-        if ($type == "any") {
-            return true;
-        }
 
-        // scalar types
-        $defType = gettype($definition);
-
-        // normalise PHP types to syringe types
-        if (in_array($defType, ["int", "integer", "float", "double"])) {
-            $defType = "number";
-        } elseif ($defType == "boolean") {
-            $defType = "bool";
-        }
-
-        // do a direct match for scalar types
-        if (in_array($type, ['string', 'bool', 'number']) && $type == $defType) {
+        if ($this->typeValidator->checkType($type, $definition)) {
             return true;
         }
 
         if ($type == "serviceReference") {
-            return is_string($definition) && $this->compilationHelper->isServiceReference($definition);
-        }
-
-        // PHP arrays can be "list", "array" or "object" types
-        if ($defType == "array") {
-            if ($type == "array") {
-                // "array" allows mixed keys so no need to check further
-                return true;
-            }
-
-            $hasNumericKeys = false;
-            $hasAssociativeKeys = false;
-            foreach (array_keys($definition) as $key) {
-                $hasNumericKeys = $hasNumericKeys || is_int($key);
-                $hasAssociativeKeys = $hasAssociativeKeys || is_string($key);
-            }
-
-            // check we don't have both assoc and numeric keys, then check the key types for list and object
-            return !($hasAssociativeKeys && $hasNumericKeys) && (
-                ($type == "list" && $hasNumericKeys) ||
-                ($type == "object" && $hasAssociativeKeys)
-            );
-
+            return is_string($definition) && $this->referenceHelper->isServiceReference($definition);
         }
 
         return false;
@@ -286,7 +252,7 @@ class SyntaxValidator
      * @param string|string[] $value
      * @return string[]
      */
-    protected function normaliseToArray($value): array
+    protected function normaliseToArray(mixed $value): array
     {
         if (is_scalar($value)) {
             $value = [$value];
@@ -296,22 +262,22 @@ class SyntaxValidator
 
     /**
      * @param string $message
-     * @param string $fileName
-     * @return ValidationError
+     * @param string $source
+     * @return SyringeError
      */
-    protected function syntaxError(string $message, string $fileName): ValidationError
+    protected function syntaxError(string $message, string $source): SyringeError
     {
-        return $this->compilationHelper->syntaxError($message, ["filename" => $fileName]);
+        return $this->errorHelper->syntaxError($message, ["source" => $source]);
     }
 
     /**
      * @param string $warning
-     * @param string $fileName
-     * @return ValidationError
+     * @param string $source
+     * @return SyringeError
      */
-    protected function warning(string $warning, string $fileName): ValidationError
+    protected function warning(string $warning, string $source): SyringeError
     {
-        return $this->compilationHelper->warning($warning, ["filename" => $fileName]);
+        return $this->errorHelper->warning($warning, ["source" => $source]);
     }
 
 }
