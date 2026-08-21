@@ -2,11 +2,16 @@
 
 namespace Lexide\Syringe\Container;
 
+use Lexide\Syringe\Exception\ConfigException;
+use Lexide\Syringe\Exception\LoaderException;
+use Lexide\Syringe\Loader\YamlLoader;
 use Pimple\Container;
 use Psr\Log\LoggerInterface;
 
 class ContainerOptions
 {
+
+    protected const OPTIONS_CACHE_NAME = "syringe_container_options";
 
     protected array $options = [
         "useIncludePath" => true,
@@ -25,6 +30,51 @@ class ContainerOptions
         "processAssertions" => true,
         "errorLogger" => null
     ];
+
+    /**
+     * @param ?string $optionsFilePath
+     * @param ?int $cacheTtl
+     * @throws ConfigException
+     */
+    public function __construct(?string $optionsFilePath = null, ?int $cacheTtl = null)
+    {
+        if (!empty($optionsFilePath)) {
+            $this->loadFromFile($optionsFilePath, $cacheTtl);
+        }
+    }
+
+    /**
+     * @param string $optionsFilePath
+     * @param ?int $cacheTtl
+     * @throws ConfigException
+     */
+    public function loadFromFile(string $optionsFilePath, ?int $cacheTtl = null): void
+    {
+        $options = isset($cacheTtl)
+            ? apcu_fetch(self::OPTIONS_CACHE_NAME)
+            : false;
+
+        if (!is_array($options)) {
+            try {
+                $loader = new YamlLoader();
+                $options = $loader->loadFile($optionsFilePath);
+            } catch (LoaderException $e) {
+                throw new ConfigException("Cannot load options file", previous: $e);
+            }
+
+            $options = array_intersect_key($options, $this->options);
+
+            if (isset($cacheTtl)) {
+                apcu_add(self::OPTIONS_CACHE_NAME, $options, $cacheTtl);
+            }
+        }
+
+        foreach ($options as $option => $value) {
+            if (array_key_exists($option, $this->options)) {
+                $this->accessOption($option, $value);
+            }
+        }
+    }
 
     /**
      * @param string $name
