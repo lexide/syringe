@@ -54,12 +54,15 @@ class EverythingTest extends TestCase
             "SYRINGE_THREE" => "ghi"
         ];
 
-        $options = new ContainerOptions();
+        $options = new ContainerOptions(__DIR__ . "/options.yml");
         $options->applicationDirectory(dirname(dirname(__DIR__)));
         $options->errorLogger($logger);
-        $options->cacheCompiledDefinition(false);
         $options->environmentVariableMap($envVarMap);
-        $options->noStubs(true);
+
+        // check the config file loaded
+        $this->assertFalse($options->cacheCompiledDefinition());
+        $this->assertTrue($options->noStubs());
+        $this->assertSame("appDirKey", $options->applicationDirectoryKey());
 
         foreach ($envVars as $var => $value) {
             putenv("$var=$value");
