@@ -36,7 +36,6 @@ class ConfigCompiler
      * @param bool $ignoreWarnings
      * @return array
      * @throws ConfigException
-     * @throws ReferenceException
      */
     public function compile(array $definitions, bool $ignoreWarnings = false): array
     {

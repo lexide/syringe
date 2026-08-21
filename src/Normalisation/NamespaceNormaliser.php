@@ -26,7 +26,6 @@ class NamespaceNormaliser
     /**
      * @param array $namespaceDefinitions
      * @return array
-     * @throws ReferenceException
      */
     public function normalise(array $namespaceDefinitions): array
     {
@@ -56,13 +55,11 @@ class NamespaceNormaliser
                         ) {
                             $existingAliasNamespace = $this->getNamespaceFromKey(
                                 $this->referenceHelper->getServiceKey($normalisedDefinitions["services"][$key]["aliasOf"]),
-                                $namespaces
                             );
                             $thisAliasNamespace = $this->getNamespaceFromKey(
                                 $this->referenceHelper->getServiceKey($serviceDefinition["aliasOf"]),
-                                $namespaces
                             );
-                            $thisKeyNamespace = $this->getNamespaceFromKey($key, $namespaces);
+                            $thisKeyNamespace = $this->getNamespaceFromKey($key);
 
                             if (
                                 $existingAliasNamespace != $namespace &&
@@ -91,8 +88,9 @@ class NamespaceNormaliser
                 $namespacedParameter = $this->normaliseNamespacedKey($parameter, $namespaces, $namespace);
 
                 if (
+                    !empty($namespace) &&
                     isset($normalisedDefinitions["parameters"][$namespacedParameter]) &&
-                    $this->getNamespaceFromKey($namespacedParameter, $namespaces) == $namespace
+                    $this->getNamespaceFromKey($namespacedParameter) == $namespace
                 ) {
                     // we have a key collision and the key is local to this namespace
                     // externally set keys take precedence
@@ -272,23 +270,11 @@ class NamespaceNormaliser
 
     /**
      * @param string $namespacedKey
-     * @param array $namespaces
      * @return string
-     * @throws ReferenceException
      */
-    protected function getNamespaceFromKey(string $namespacedKey, array $namespaces): string
+    protected function getNamespaceFromKey(string $namespacedKey): string
     {
-        $separatorPos = strpos($namespacedKey, Reference::NAMESPACE_SEPARATOR);
-        if ($separatorPos === false) {
-            throw new ReferenceException("Can't get namespace. No separator found in key '$namespacedKey'");
-        }
-
-        $namespace = substr($namespacedKey, 0, $separatorPos);
-        if (!in_array($namespace, $namespaces)) {
-            throw new ReferenceException("Can't get namespace. The key '$namespacedKey' was not prefixed with a registered namespace");
-        }
-
-        return $namespace;
+        return explode(Reference::NAMESPACE_SEPARATOR, $namespacedKey)[0];
     }
 
 }

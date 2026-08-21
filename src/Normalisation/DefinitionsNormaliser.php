@@ -41,7 +41,6 @@ class DefinitionsNormaliser
     /**
      * @param array $definitions
      * @return array
-     * @throws ReferenceException
      */
     public function normalise(array $definitions): array
     {
