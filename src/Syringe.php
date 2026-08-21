@@ -27,6 +27,7 @@ use Lexide\Syringe\Container\ServiceFactoryFactory;
 use Lexide\Syringe\Error\ErrorHelper;
 use Lexide\Syringe\Exception\ConfigException;
 use Lexide\Syringe\Exception\LoaderException;
+use Lexide\Syringe\Exception\ReferenceException;
 use Lexide\Syringe\Loader\JsonLoader;
 use Lexide\Syringe\Loader\LoaderRegistry;
 use Lexide\Syringe\Loader\PhpLoader;
@@ -58,15 +59,15 @@ use Psr\Log\LoggerInterface;
 class Syringe
 {
 
-    const CONTAINER_DEFINITION_CACHE_KEY = "syringe-container-definition";
+    const CONTAINER_DEFINITION_CACHE_KEY = "syringe-container-definitions";
 
     protected ContainerOptions $options;
 
-    protected $configPaths = [];
+    protected array $configPaths = [];
 
-    protected $configFiles = [];
+    protected array $configFiles = [];
 
-    protected $providers = [];
+    protected array $providers = [];
 
     protected ?ReferenceHelper $referenceHelper = null;
 
@@ -97,7 +98,7 @@ class Syringe
      */
     public function addConfigPath(string $path): void
     {
-        if (!empty($path) && $path[0] != "/" && $appDir = $this->options->applicationDirectory()) {
+        if (!empty($path) && $path[0] != DIRECTORY_SEPARATOR && $appDir = $this->options->applicationDirectory()) {
             $path = rtrim($appDir, DIRECTORY_SEPARATOR) . DIRECTORY_SEPARATOR . $path;
         }
 
@@ -144,7 +145,7 @@ class Syringe
     /**
      * @return Container|ContainerInterface
      * @throws ConfigException
-     * @throws Exception\ReferenceException
+     * @throws ReferenceException
      */
     public function build(): Container|ContainerInterface
     {
