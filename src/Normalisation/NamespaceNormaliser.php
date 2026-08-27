@@ -108,7 +108,6 @@ class NamespaceNormaliser
             );
 
             foreach ($definitions["extensions"] ?? [] as $service => $extension) {
-                $service = $this->normaliseNamespacedKey($service, $namespaces, $namespace);
                 foreach ($extension as $index => $extensionDefinition) {
                     $extension[$index] = $this->normaliseArray($extensionDefinition, $namespaces, $namespace, true);
                 }
