@@ -8,13 +8,21 @@ schemata:
         element:
           type: "string"
       parameters:
-        type: "object"
-        element:
-          type: "any"
+        oneOf:
+          - type: "object"
+            element:
+              type: "any"
+          - type: "any"
+            warning: "The use of an empty parameters key is deprecated. Please remove the key if there are no parameters"
+            empty: true
       services:
-        type: "object"
-        element:
-          type: "@service"
+        oneOf:
+          - type: "object"
+            element:
+              type: "@service"
+          - type: "any"
+            warning: "The use of an empty services key is deprecated. Please remove the key if there are no services"
+            empty: true
       extensions:
         type: "object"
         empty: false
@@ -27,6 +35,17 @@ schemata:
                   type: "@calls"
                 tags:
                   type: "@tags"
+              element:
+                type: "object"
+                empty: false
+                warning: "Using a key for extension calls is deprecated. Please convert the extension to an object with a 'calls' key"
+                children:
+                  method:
+                    type: "string"
+                  arguments:
+                    type: "@arguments"
+                requiredChildren:
+                  method: true
             - type: "list"
               warning: "The use of numeric arrays for extension calls is deprecated. Please prefix with the 'calls' key"
               empty: false
@@ -96,17 +115,14 @@ schemata:
   arguments:
     oneOf:
       - type: "list"
-        empty: false
         element:
           type: "any"
       - type: "object"
         warning: "The use of named arguments is not recommended"
-        empty: false
         element:
           type: "any"
       - type: "array"
         warning: "The use of named arguments is not recommended"
-        empty: false
         element:
           type: "any"
   calls:
