@@ -125,7 +125,7 @@ class SyntaxValidator
                         unset($childList[$child]);
                     }
 
-                    if (!empty($childList)) {
+                    if (!empty($childList) && !isset($schema["element"])) {
                         $errors[] = $this->syntaxError(
                             "'$elementPath' contains child elements that are not allowed: '"
                                 . implode("', '", array_keys($childList)) . "'",
@@ -142,7 +142,12 @@ class SyntaxValidator
                         break;
                     }
 
+                    $alreadyProcessed = $schema["children"] ?? [];
+
                     foreach ($definition as $i => $element) {
+                        if (isset($alreadyProcessed[$i])) {
+                            continue;
+                        }
                         // validate each element in the definition list
                         $errors = array_merge(
                             $errors,
