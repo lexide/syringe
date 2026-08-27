@@ -201,7 +201,12 @@ class Syringe
         }
 
         if ($this->options->useIncludePath()) {
-            $this->addConfigPaths(explode(":", get_include_path()));
+            $this->addConfigPaths(
+                array_filter(
+                    explode(":", get_include_path()),
+                    fn($path) => is_dir($path)
+                )
+            );
         }
 
         // add the standard syringe provider
