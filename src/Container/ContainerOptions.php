@@ -32,42 +32,21 @@ class ContainerOptions
     ];
 
     /**
-     * @param ?string $optionsFilePath
-     * @param ?int $cacheTtl
-     * @throws ConfigException
+     * @param ?array $options
      */
-    public function __construct(?string $optionsFilePath = null, ?int $cacheTtl = null)
+    public function __construct(?array $options = null)
     {
-        if (!empty($optionsFilePath)) {
-            $this->loadFromFile($optionsFilePath, $cacheTtl);
+        if (!empty($options)) {
+            $this->loadOptions($options);
         }
     }
 
     /**
-     * @param string $optionsFilePath
-     * @param ?int $cacheTtl
-     * @throws ConfigException
+     * @param array $options
      */
-    public function loadFromFile(string $optionsFilePath, ?int $cacheTtl = null): void
+    protected function loadOptions(array $options): void
     {
-        $options = isset($cacheTtl)
-            ? apcu_fetch(self::OPTIONS_CACHE_NAME)
-            : false;
-
-        if (!is_array($options)) {
-            try {
-                $loader = new YamlLoader();
-                $options = $loader->loadFile($optionsFilePath);
-            } catch (LoaderException $e) {
-                throw new ConfigException("Cannot load options file", previous: $e);
-            }
-
-            $options = array_intersect_key($options, $this->options);
-
-            if (isset($cacheTtl)) {
-                apcu_add(self::OPTIONS_CACHE_NAME, $options, $cacheTtl);
-            }
-        }
+        $options = array_intersect_key($options, $this->options);
 
         foreach ($options as $option => $value) {
             if (array_key_exists($option, $this->options)) {
