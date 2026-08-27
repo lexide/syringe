@@ -111,9 +111,15 @@ class ReferenceValidator
             $classExists = false;
             if (!empty($definition["class"])) {
                 if (!class_exists($definition["class"])) {
-                    $serviceErrors[] = $this->errorHelper->referenceError(
-                        "The class {$definition["class"]} does not exist"
-                    );
+                    if (!empty($definition["stub"])) {
+                        $serviceErrors[] = $this->errorHelper->warning(
+                            "Stub services that define a 'class' are deprecated"
+                        );
+                    } else {
+                        $serviceErrors[] = $this->errorHelper->referenceError(
+                            "The class {$definition["class"]} does not exist"
+                        );
+                    }
                 } else {
                     $classExists = true;
                 }
