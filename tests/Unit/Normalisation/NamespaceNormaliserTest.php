@@ -28,12 +28,6 @@ class NamespaceNormaliserTest extends TestCase
         $this->referenceHelper->shouldReceive("getServiceReference")->passthru();
     }
 
-    /**
-     * @param array $definitions
-     * @param array $expectedDefinitions
-     * @param array $missingDefinitions
-     * @throws ReferenceException
-     */
     protected function standardTest(
         array $definitions,
         array $expectedDefinitions,
@@ -297,7 +291,7 @@ class NamespaceNormaliserTest extends TestCase
     public static function extensionsDefinitionsProvider(): array
     {
         return [
-            "namespace extensions" => [
+            "don't namespace extensions" => [
                 [
                     "namespace" => [
                         "extensions" => [
@@ -305,32 +299,21 @@ class NamespaceNormaliserTest extends TestCase
                                 "calls" => [[
                                     "foo" => "bar"
                                 ]]
+                            ],
+                            "otherNamespace.one" => [
+                                "calls" => [[
+                                    "baz" => "fiz"
+                                ]]
                             ]
                         ]
                     ]
                 ],
                 [
-                    "extensions>namespace.one>calls>0>foo" => "bar"
-                ]
-            ],
-            "don't namespace if already namespaced" => [
-                [
-                    "ns1" => [
-                        "extensions" => [
-                            "ns2.one" => [
-                                "calls" => [[
-                                    "foo" => "bar"
-                                ]]
-                            ]
-                        ]
-                    ],
-                    "ns2" => []
+                    "extensions>one>calls>0>foo" => "bar",
+                    "extensions>otherNamespace.one>calls>0>baz" => "fiz",
                 ],
                 [
-                    "extensions>ns2.one>calls>0>foo" => "bar"
-                ],
-                [
-                    "extensions>ns1.ns2.one"
+                    "extensions>one>calls>1"
                 ]
             ],
             "namespace extension references" => [
@@ -351,8 +334,8 @@ class NamespaceNormaliserTest extends TestCase
                     ]
                 ],
                 [
-                    "extensions>namespace.one>calls>0>arguments>0" => "@namespace.two",
-                    "extensions>namespace.one>calls>0>arguments>1" => "@namespace.three"
+                    "extensions>one>calls>0>arguments>0" => "@namespace.two",
+                    "extensions>one>calls>0>arguments>1" => "@namespace.three"
                 ]
             ],
             "merge extensions - calls" => [

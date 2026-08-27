@@ -53,22 +53,44 @@ class ExtensionCallsNormaliserTest extends TestCase
                     "testNS>extensions>service>calls>1" => "to all my"
                 ]
             ],
-            "Extensions already correct" => [
+            "Keyed call names are removed" => [
                 [
                     "testNS" => [
                         "extensions" => [
                             "service" => [
+                                "foo" => "bar",
+                                "baz" => "fiz"
+                            ]
+                        ]
+                    ]
+                ],
+                [
+                    "testNS>extensions>service>calls>0" => "bar",
+                    "testNS>extensions>service>calls>1" => "fiz"
+                ]
+            ],
+            "Extensions already correct" => [
+                [
+                    "testNS" => [
+                        "extensions" => [
+                            "serviceOne" => [
                                 "calls" => [
                                     "this is a call",
                                     "to all my",
                                     "past resignations"
+                                ]
+                            ],
+                            "serviceTwo" => [
+                                "tags" => [
+                                    "it's been too long"
                                 ]
                             ]
                         ]
                     ]
                 ],
                 [
-                    "testNS>extensions>service>calls>2" => "past resignations"
+                    "testNS>extensions>serviceOne>calls>2" => "past resignations",
+                    "testNS>extensions>serviceTwo>tags>0" => "it's been too long"
                 ]
             ],
             "Extensions normalised in multiple namespaces" => [

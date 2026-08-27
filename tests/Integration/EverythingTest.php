@@ -54,7 +54,11 @@ class EverythingTest extends TestCase
             "SYRINGE_THREE" => "ghi"
         ];
 
-        $options = new ContainerOptions(__DIR__ . "/options.yml");
+        $options = new ContainerOptions([
+            "cacheCompiledDefinition" => false,
+            "noStubs" => true,
+            "applicationDirectoryKey" => "appDirKey"
+        ]);
         $options->applicationDirectory(dirname(dirname(__DIR__)));
         $options->errorLogger($logger);
         $options->environmentVariableMap($envVarMap);
