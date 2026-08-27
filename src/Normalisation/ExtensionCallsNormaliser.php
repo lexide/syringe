@@ -15,8 +15,8 @@ class ExtensionCallsNormaliser
         // definitions are still namespaced at this point
         foreach ($definitions as $namespace => $definition) {
             foreach ($definition["extensions"] ?? [] as $service => $extensions) {
-                if (!isset($extensions["calls"])) {
-                    $extensions = ["calls" => $extensions];
+                if (!isset($extensions["calls"]) && !isset($extensions["tags"])) {
+                    $extensions = ["calls" => array_values($extensions)];
                 }
                 $definition["extensions"][$service] = $extensions;
             }
