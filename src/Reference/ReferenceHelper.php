@@ -125,7 +125,7 @@ class ReferenceHelper
      */
     protected function replaceEmbeddedReference(string $string, string $reference, string $char, string $replacement, bool $removeChars): ?string
     {
-        $pattern = "/" . preg_quote($char . $reference . $char) . "/u";
+        $pattern = "/" . str_replace("/", "\\/", preg_quote($char . $reference . $char)) . "/u";
         if (!$removeChars) {
             $replacement = $char . $replacement . $char;
         }
