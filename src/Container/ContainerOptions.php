@@ -2,16 +2,11 @@
 
 namespace Lexide\Syringe\Container;
 
-use Lexide\Syringe\Exception\ConfigException;
-use Lexide\Syringe\Exception\LoaderException;
-use Lexide\Syringe\Loader\YamlLoader;
 use Pimple\Container;
 use Psr\Log\LoggerInterface;
 
 class ContainerOptions
 {
-
-    protected const OPTIONS_CACHE_NAME = "syringe_container_options";
 
     protected array $options = [
         "useIncludePath" => true,
