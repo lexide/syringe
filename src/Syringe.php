@@ -186,9 +186,6 @@ class Syringe
         return $containerBuilder->createContainer($compiledDefinitions["definitions"], $this->options);
     }
 
-    /**
-     *
-     */
     protected function processOptions(): void
     {
         // app directory
