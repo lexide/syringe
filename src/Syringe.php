@@ -142,6 +142,11 @@ class Syringe
         }
     }
 
+    public function resetProviders(): void
+    {
+        $this->providers = [];
+    }
+
     /**
      * @return Container|ContainerInterface
      * @throws ConfigException
@@ -186,8 +191,6 @@ class Syringe
      */
     protected function processOptions(): void
     {
-        $this->providers = [];
-
         // app directory
         $appDirKey = $this->options->applicationDirectoryKey();
         $appDir = $this->options->applicationDirectory();
