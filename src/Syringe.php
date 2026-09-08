@@ -59,7 +59,7 @@ use Psr\Log\LoggerInterface;
 class Syringe
 {
 
-    const CONTAINER_DEFINITION_CACHE_KEY = "syringe-container-definitions";
+    protected const CONTAINER_DEFINITION_CACHE_KEY = "syringe-container-definitions";
 
     protected ContainerOptions $options;
 
