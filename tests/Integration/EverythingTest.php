@@ -55,7 +55,7 @@ class EverythingTest extends TestCase
         ];
 
         $options = new ContainerOptions([
-            "cacheCompiledDefinition" => false,
+            "cacheCompiledDefinitions" => false,
             "noStubs" => true,
             "applicationDirectoryKey" => "appDirKey"
         ]);
@@ -64,7 +64,7 @@ class EverythingTest extends TestCase
         $options->environmentVariableMap($envVarMap);
 
         // check the config file loaded
-        $this->assertFalse($options->cacheCompiledDefinition());
+        $this->assertFalse($options->cacheCompiledDefinitions());
         $this->assertTrue($options->noStubs());
         $this->assertSame("appDirKey", $options->applicationDirectoryKey());
 

@@ -76,11 +76,11 @@ class Syringe
     protected ?TypeValidator $typeValidator = null;
 
     /**
-     * @param ContainerOptions $options
+     * @param ContainerOptions|array $options
      */
-    public function __construct(ContainerOptions $options)
+    public function __construct(ContainerOptions|array $options = [])
     {
-        $this->options = $options;
+        $this->options = $options instanceof ContainerOptions ? $options : new ContainerOptions($options);
     }
 
     /**
@@ -154,7 +154,7 @@ class Syringe
      */
     public function build(): Container|ContainerInterface
     {
-        if ($this->options->cacheCompiledDefinition()) {
+        if ($this->options->cacheCompiledDefinitions()) {
             $compiledDefinitions = apcu_fetch(self::CONTAINER_DEFINITION_CACHE_KEY);
         }
 
@@ -177,8 +177,12 @@ class Syringe
             $compiler = $this->getCompiler($errorLogger);
             $compiledDefinitions = $compiler->compile($definitions, $ignoreWarnings);
 
-            if ($this->options->cacheCompiledDefinition()) {
-                apcu_store(self::CONTAINER_DEFINITION_CACHE_KEY, $compiledDefinitions);
+            if ($this->options->cacheCompiledDefinitions()) {
+                apcu_store(
+                    self::CONTAINER_DEFINITION_CACHE_KEY,
+                    $compiledDefinitions,
+                    $this->options->compiledDefinitionsCacheTtl()
+                );
             }
         }
 

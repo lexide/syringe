@@ -11,7 +11,8 @@ class ContainerOptions
     protected array $options = [
         "useIncludePath" => true,
         "skipSyntaxValidation" => false,
-        "cacheCompiledDefinition" => true,
+        "cacheCompiledDefinitions" => true,
+        "compiledDefinitionsCacheTtl" => 300,
         "applicationDirectory" => null,   // no default, needs to be set
         "applicationDirectoryKey" => "app.dir",
         "containerClass" => Container::class,
@@ -93,9 +94,18 @@ class ContainerOptions
      * @param ?bool $cacheEnabled
      * @return bool
      */
-    public function cacheCompiledDefinition(?bool $cacheEnabled = null): bool
+    public function cacheCompiledDefinitions(?bool $cacheEnabled = null): bool
     {
-        return $this->accessOption("cacheCompiledDefinition", $cacheEnabled);
+        return $this->accessOption("cacheCompiledDefinitions", $cacheEnabled);
+    }
+
+    /**
+     * @param ?int $cacheTtl
+     * @return int
+     */
+    public function compiledDefinitionsCacheTtl(?int $cacheTtl = null): int
+    {
+        return $this->accessOption("compiledDefinitionsCacheTtl", $cacheTtl);
     }
 
     /**
