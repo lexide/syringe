@@ -59,8 +59,6 @@ use Psr\Log\LoggerInterface;
 class Syringe
 {
 
-    protected const CONTAINER_DEFINITION_CACHE_KEY = "syringe-container-definitions";
-
     protected ContainerOptions $options;
 
     protected array $configPaths = [];
@@ -155,7 +153,7 @@ class Syringe
     public function build(): Container|ContainerInterface
     {
         if ($this->options->cacheCompiledDefinitions()) {
-            $compiledDefinitions = apcu_fetch(self::CONTAINER_DEFINITION_CACHE_KEY);
+            $compiledDefinitions = apcu_fetch($this->options->compiledDefinitionsCacheKey());
         }
 
         if (empty($compiledDefinitions)) {
@@ -179,7 +177,7 @@ class Syringe
 
             if ($this->options->cacheCompiledDefinitions()) {
                 apcu_store(
-                    self::CONTAINER_DEFINITION_CACHE_KEY,
+                    $this->options->compiledDefinitionsCacheKey(),
                     $compiledDefinitions,
                     $this->options->compiledDefinitionsCacheTtl()
                 );

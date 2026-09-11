@@ -12,6 +12,7 @@ class ContainerOptions
         "useIncludePath" => true,
         "skipSyntaxValidation" => false,
         "cacheCompiledDefinitions" => true,
+        "compiledDefinitionsCacheKey" => "syringe-container-definitions",
         "compiledDefinitionsCacheTtl" => 300,
         "applicationDirectory" => null,   // no default, needs to be set
         "applicationDirectoryKey" => "app.dir",
@@ -97,6 +98,15 @@ class ContainerOptions
     public function cacheCompiledDefinitions(?bool $cacheEnabled = null): bool
     {
         return $this->accessOption("cacheCompiledDefinitions", $cacheEnabled);
+    }
+
+    /**
+     * @param ?string $cacheKey
+     * @return string
+     */
+    public function compiledDefinitionsCacheKey(?string $cacheKey = null): string
+    {
+        return $this->accessOption("compiledDefinitionsCacheKey", $cacheKey);
     }
 
     /**
