@@ -158,10 +158,24 @@ class ReferenceValidatorHelper
 
             // if this is a class constant, check the class exists
             $classError = false;
+            $className = null;
+            $isEnumSymbol = false;
+            $rawConstant = $constant;
+            $enumSymbol = trim($constant, "*");
+            if ($enumSymbol != $constant) {
+                $constant = $enumSymbol;
+                $isEnumSymbol = true;
+            }
             $exploded = explode("::", $constant);
             if (count($exploded) == 2) {
                 $className = $exploded[0];
-                if (!class_exists($className) && !interface_exists($className)) {
+                $enumExists = enum_exists($className);
+                if ($isEnumSymbol && !$enumExists) {
+                    $errors[] = $this->errorHelper->referenceError(
+                        "The enum '$className' does not exist"
+                    );
+                    $classError = true;
+                } elseif (!class_exists($className) && !interface_exists($className) && !$enumExists) {
                     $errors[] = $this->errorHelper->referenceError(
                         "The class '$className' for constant '{$exploded[1]}' does not exist"
                     );
@@ -170,9 +184,11 @@ class ReferenceValidatorHelper
             }
 
             if (!$classError && !defined($constant)) {
-                $errors[] = $this->errorHelper->referenceError("The constant '$constant' does not exist");
+                $errors[] = $this->errorHelper->referenceError(
+                    "The " . (!empty($enumExists) ? "enum" : "constant") . " '$constant' does not exist"
+                );
             }
-            $value = $this->referenceHelper->replaceConstantReference($value, $constant, '', true);
+            $value = $this->referenceHelper->replaceConstantReference($value, $rawConstant, '', true);
         }
 
         return $errors;

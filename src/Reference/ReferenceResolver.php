@@ -167,22 +167,42 @@ class ReferenceResolver implements ReferenceResolverInterface
             while ($thisLoops < $maxLoops && is_string($arg) && $constantRef = $this->referenceHelper->findNextConstant($arg)) {
                 ++$thisLoops;
 
+                $isEnumSymbol = false;
+                $rawConstant = $constantRef;
+                $enumSymbol = trim($constantRef, "*");
+                if ($enumSymbol != $constantRef) {
+                    $constantRef = $enumSymbol;
+                    $isEnumSymbol = true;
+                }
+
                 if (str_contains($constantRef, "::")) {
                     $exploded = explode("::", $constantRef, 2);
                     $className = $exploded[0];
-                    if (!class_exists($className) && !interface_exists($className)) {
-                        throw new ReferenceException("Referenced class '{$className}' doesn't exist");
+                    if ($isEnumSymbol && !enum_exists($className)) {
+                        throw new ReferenceException("Referenced enum '$className' doesn't exist");
+                    } elseif (!class_exists($className) && !interface_exists($className) && !enum_exists($className)) {
+                        throw new ReferenceException("Referenced class '$className' doesn't exist");
                     }
                 }
 
                 if (!defined($constantRef)) {
-                    throw new ReferenceException("Referenced constant '{$constantRef}' doesn't exist");
+                    throw new ReferenceException(
+                        "Referenced " . (isset($className) && enum_exists($className) ? "enum" : "constant") .
+                            " '$constantRef' doesn't exist"
+                    );
                 }
 
                 $value = constant($constantRef);
 
-                if (strlen($arg) > strlen($constantRef) + 2) {
-                    $arg = $this->referenceHelper->replaceConstantReference($arg, $constantRef, $value, true);
+                if ($value instanceof \BackedEnum && !$isEnumSymbol) {
+                    $value = $value->value;
+                }
+
+                if (strlen($arg) > strlen($rawConstant) + 2) {
+                    if ($value instanceof \UnitEnum) {
+                        throw new ReferenceException("Cannot inject the enum symbol '$constantRef' into a string");
+                    }
+                    $arg = $this->referenceHelper->replaceConstantReference($arg, $rawConstant, $value, true);
                 } else {
                     $arg = $value;
                 }
