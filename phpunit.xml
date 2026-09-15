@@ -7,6 +7,7 @@
             <exclude>tests/Unit/Normalisation/ExpectedDefinitionsTestTrait.php</exclude>
             <exclude>tests/Unit/Normalisation/NormalisationErrorTestTrait.php</exclude>
             <exclude>tests/Unit/Reference/ReferenceTestMock.php</exclude>
+            <exclude>tests/Unit/Enum</exclude>
 
         </testsuite>
         <testsuite name="integration-tests">

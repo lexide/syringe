@@ -10,6 +10,8 @@ use Lexide\Syringe\Reference\ReferenceResolver;
 use Lexide\Syringe\Tag\TagCollection;
 use Lexide\Syringe\Tag\TagIterator;
 use Lexide\Syringe\Tag\TagIteratorFactory;
+use Lexide\Syringe\Test\Unit\Enum\TestBackedEnum;
+use Lexide\Syringe\Test\Unit\Enum\TestUnitEnum;
 use Mockery\Adapter\Phpunit\MockeryPHPUnitIntegration;
 use Mockery\MockInterface;
 use PHPUnit\Framework\Attributes\DataProvider;
@@ -260,9 +262,7 @@ class ReferenceResolverTest extends TestCase
         $this->referenceHelper->shouldReceive("findNextConstant")->passthru();
         $this->referenceHelper->shouldReceive("replaceConstantReference")->passthru();
 
-        $reference = "^$constantReference^";
-
-        $this->resolver->resolveParameter($reference, $this->container);
+        $this->resolver->resolveParameter($constantReference, $this->container);
     }
 
     public static function tagProvider(): array
@@ -689,6 +689,9 @@ class ReferenceResolverTest extends TestCase
 
     public static function constantProvider(): array
     {
+        $unitEnum = TestUnitEnum::class;
+        $backedEnum = TestBackedEnum::class;
+
         return [
             "root level constant" => [
                 "^PHP_INT_MAX^",
@@ -702,9 +705,29 @@ class ReferenceResolverTest extends TestCase
                 "^" . AssertionInterface::class . "::TYPE_SERVICE^",
                 AssertionInterface::TYPE_SERVICE
             ],
-            "single string replacement" => [
+            "enum symbol" => [
+                "^$unitEnum::Foo^",
+                TestUnitEnum::Foo
+            ],
+            "enum symbol (explicit)" => [
+                "^*$unitEnum::Bar*^",
+                TestUnitEnum::Bar
+            ],
+            "enum value" => [
+                "^$backedEnum::Baz^",
+                TestBackedEnum::Baz->value
+            ],
+            "backed enum symbol" => [
+                "^*$backedEnum::Fiz*^",
+                TestBackedEnum::Fiz
+            ],
+            "single string constant replacement" => [
                 "Use ^" . Reference::class . "::SERVICE_CHAR^ for services",
                 "Use @ for services"
+            ],
+            "single string enum replacement" => [
+                "foo ^$backedEnum::Bar^ baz",
+                "foo bar baz"
             ],
             "multiple string replacements" => [
                 "The reference characters are ^" .
@@ -720,23 +743,40 @@ class ReferenceResolverTest extends TestCase
     {
         $constantMissing = "/constant.*doesn't exist/";
         $testClass = ReferenceTestMock::class;
+        $testEnum = TestBackedEnum::class;
 
         return [
             "missing root constant" => [
-                "DOES_NOT_EXIST",
+                "^DOES_NOT_EXIST^",
                 $constantMissing
             ],
             "missing class constant" => [
-                "$testClass::MISSING",
+                "^$testClass::MISSING^",
                 $constantMissing
             ],
             "inaccessible class constant" => [
-                "$testClass::MY_CONST",
+                "^$testClass::MY_CONST^",
                 $constantMissing
             ],
             "missing class" => [
-                "Does\\Not\\Exist::AT_ALL",
+                "^Does\\Not\\Exist::AT_ALL^",
                 "/class.*doesn't exist/"
+            ],
+            "missing enum symbol" => [
+                "^*Does\\Not\\Exist::AT_ALL*^",
+                "/enum.*doesn't exist/"
+            ],
+            "missing enum case" => [
+                "^$testEnum::What^",
+                "/enum.*::What.* doesn't exist/"
+            ],
+            "enum symbol is a class" => [
+                "^*" . Reference::class . "::SERVICE_CHAR*^",
+                "/enum.*" . addslashes(Reference::class) . ".*doesn't exist/"
+            ],
+            "enum symbol in a string" => [
+                "foo ^*$testEnum::Bar*^ baz",
+                "/enum.*" . addslashes($testEnum) . ".*into a string/"
             ]
         ];
     }

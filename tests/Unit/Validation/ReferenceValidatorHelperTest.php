@@ -242,6 +242,34 @@ class ReferenceValidatorHelperTest extends TestCase
                 ["Non\Existent::CONSTANT"],
                 ["/class.*Non\\\\Existent.*CONSTANT/"]
             ],
+            "unit enum exists" => [
+                ["Lexide\Syringe\Test\Unit\Enum\TestUnitEnum::Foo"],
+                []
+            ],
+            "unit enum symbol exists" => [
+                ["*Lexide\Syringe\Test\Unit\Enum\TestUnitEnum::Bar*"],
+                []
+            ],
+            "backed enum exists" => [
+                ["Lexide\Syringe\Test\Unit\Enum\TestBackedEnum::Foo"],
+                []
+            ],
+            "backed enum symbol" => [
+                ["*Lexide\Syringe\Test\Unit\Enum\TestBackedEnum::Bar*"],
+                []
+            ],
+            "enum exists but case does not" => [
+                ["Lexide\Syringe\Test\Unit\Enum\TestUnitEnum::What"],
+                ["/enum.*TestUnitEnum::What.*does not exist/"]
+            ],
+            "enum symbol does not exist" => [
+                ["*Lexide\Syringe\Test\Unit\Enum\MissingEnum::Missing"],
+                ["/enum.*MissingEnum.*does not exist/"]
+            ],
+            "enum symbol is not an enum" => [
+                ["*Lexide\Syringe\Test\Unit\Validation\ReferenceValidatorHelperTest::TEST*"],
+                ["/enum.*ReferenceValidatorHelperTest.*does not exist/"]
+            ],
             "Multiple constants" => [
                 ["PHP_EOL", "DIRECTORY_SEPARATOR", "DateTimeZone::AFRICA"],
                 []
