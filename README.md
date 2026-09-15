@@ -58,7 +58,7 @@ Additionally, a definition in another namespace can be referenced directly by us
 parameters:
   fooBar: "foo"   # full key name: one.fooBar
 
-# [bar.yml namespaces as "two"]
+# [bar.yml namespaced as "two"]
 ---
 parameters:
   fooBar: "bar"                 # full key name: two.fooBar
