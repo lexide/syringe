@@ -1,19 +1,19 @@
-<?xml version="1.0" encoding="UTF-8"?>
-<phpunit xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" bootstrap="vendor/autoload.php" colors="true" xsi:noNamespaceSchemaLocation="https://schema.phpunit.de/10.5/phpunit.xsd">
-  <testsuites>
-    <testsuite name="unit-tests">
-      <directory>tests/Unit</directory>
-    </testsuite>
-    <testsuite name="integration-tests">
-      <directory>tests/Integration</directory>
-    </testsuite>
-  </testsuites>
-  <php>
-    <ini name="date.timezone" value="UTC"/>
-  </php>
-  <source>
-    <include>
-      <directory suffix=".php">src/</directory>
-    </include>
-  </source>
+<?xml version="1.0" encoding="utf-8"?>
+<phpunit bootstrap="vendor/autoload.php">
+    <testsuites>
+        <testsuite name="unit-tests">
+            <directory suffix=".php">tests/Unit</directory>
+            <exclude>tests/Unit/Assertion/AssertionTestTrait.php</exclude>
+            <exclude>tests/Unit/Normalisation/ExpectedDefinitionsTestTrait.php</exclude>
+            <exclude>tests/Unit/Normalisation/NormalisationErrorTestTrait.php</exclude>
+            <exclude>tests/Unit/Reference/ReferenceTestMock.php</exclude>
+            <exclude>tests/Unit/Enum</exclude>
+
+        </testsuite>
+        <testsuite name="integration-tests">
+            <directory suffix=".php">tests/Integration</directory>
+            <exclude>tests/Integration/EchoLogger.php</exclude>
+            <exclude>tests/Integration/MockService.php</exclude>
+        </testsuite>
+    </testsuites>
 </phpunit>

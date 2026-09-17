@@ -1,4 +1,7 @@
-Syringe allows a [Pimple](https://github.com/silexphp/pimple) DI container to be created and populated with services defined in configuration files, in the same fashion as Symfony's [DI module](https://github.com/symfony/dependency-injection).
+# Syringe
+
+Syringe allows a [Pimple](https://github.com/silexphp/pimple) DI container to be created and populated with services 
+defined in configuration files, in the same fashion as Symfony's [DI module](https://github.com/symfony/dependency-injection).
 
 # Installation
 
@@ -6,41 +9,248 @@ Syringe allows a [Pimple](https://github.com/silexphp/pimple) DI container to be
 
 # Getting Started
 
-The simplest method to create and set up a new Container is to use the `Lexide\Syringe\Syringe` class. It requires the path to the application directory and a list of filepaths that are relative to that directory
+The simplest method to create and set up a new Container is to use the `Lexide\Syringe\Syringe` class.
 
 ```php
 use Lexide\Syringe\Syringe;
 
-$appDir = __DIR__;
-$configFiles = [
-    "config/syringe.yml" // add paths to your configuration files here
-];
-
-Syringe::init($appDir, $configFiles);
-$container = Syringe::createContainer();
+$syringe = new Syringe();
+// add paths to your configuration files
+$syringe->addConfigFile("config/syringe.yml");
+$container = $syringe->build();
 ```
 
-# Configuration Files
+The container will now contain all the services and parameters that are defined in the config files that were added.
 
-By default, Syringe allows config files to be in JSON or YAML format. Each file can define parameters, services and tags to inject into the container, and these entities can be referenced in other areas of configuration.
+# Building a container
+
+Syringe loads service and parameter definitions from config files and uses the information to construct service objects,
+injecting them into the Pimple container. This is done lazily, so a service won't be created until it is used.
+
+## Config Files
+
+The config files are loaded individually, validated and normalised into a definitions array. Once fully compiled,
+this array can be cached to prevent reprocessing the config files.
+
+Files are added by calling `addConfigFile()` for single files or `addConfigFiles()` for a set of files. Each file can be 
+given a namespace, to separate its parameters and services from those in other files.
+
+```php
+$syringe = new Lexide\Syringe\Syringe();
+$syringe->addConfigFile("services.yml");
+$syringe->addConfigFile("parameters.yml");
+$syringe->addConfigFile("module.yml", "module-namespace"); # definition keys in this file are prefixed with "module-namespace."
+$syringe->addConfigFiles([
+    "logger" => "module/logging.yml",
+    "database" => "module/database.yml",
+    "cache" => "module/caching.yml"
+])  # namespace => filepath format 
+```
+
+Namespaces are used to avoid name collisions for definition keys, so that two files that both define the parameter `foo` 
+don't try to overwrite each other. A definitions inside the file don't need to know anything about the namespace the file
+has been assigned; any parameter or service references to other definitions in the same file are automatically resolved. 
+Additionally, a definition in another namespace can be referenced directly by using the full namespaced definition key:
+
+```yml
+# [foo.yml namespaced as "one"]
+---
+parameters:
+  fooBar: "foo"   # full key name: one.fooBar
+
+# [bar.yml namespaced as "two"]
+---
+parameters:
+  fooBar: "bar"                 # full key name: two.fooBar
+  fooBarCopy: "%fooBar%"        # uses the local namespace "two" and resolves to "bar"
+  otherFooBar: "%one.fooBar%"   # as a namespaced key, this directly references fooBar in foo.yml, resolving to "foo"
+```
+
+As a rule, it is bad practice to create dependencies between namespaces, as done in the example above, unless there is
+a guarantee that both namespaces will always be available, such as when a library requires another library, both of 
+which define Syringe definitions.
+
+In general, mapping between namespaces should be done in the root namespace (`""`):
+
+```yml
+# [baz.yml in the root namespace, using the files from the previous example]
+---
+parameters:
+  two.otherFooBar: "%one.fooBar%"
+```
+
+This helps prevents unmanaged dependency chains, circular references and other config bugs that can be hard to track down.
+
+### Config Paths
+
+When loading config files, if the file path is not absolute, Syringe will look for the file in a list of config 
+directories that it has been set up with. By default, it will parse the PHP include path and check each directory it 
+finds for the requested file, however that can be turned off and specific directories can be added when setting up 
+Syringe.
+
+```php
+$syringe = new Lexide\Syringe\Syringe();
+$syringe->addConfigPath("/var/www/app/config");
+$syringe->addConfigPaths([
+    "/var/www/app/",
+    "/var/www/external-config/"
+]);
+```
+
+Syringe will check each path in the order it was added, custom paths first, then from the include path. It will stop
+looking as soon as it finds a file matching the relative path, so the order the paths are added in is important.
+
+For example, when looking for a file named `services.yml` with two paths `/app/one` and `/app/two` added in that order, 
+if the file exists in both locations, only the file `/app/one/services.yml` will be used.
+
+## Validation
+
+By default, Syringe will validate each config file that it parses, to ensure it is in the correct format and has no 
+invalid references. If it finds any issues, they are written to a PSR/3 logger as defined by config options. Any issues 
+found will cause processing to stop, but there are several config options that will filter out less severe issues.
+
+This syntax validation can also be turned off, to increase performance, however it is then possible for invalid syntax 
+to be processed and cause errors.
+
+## Providers
+
+In addition to config files, Syringe allows for definitions to be supplied by provider classes. These can be used to 
+inject runtime or environment variables into definitions or to create services that cannot be defined ahead of time.
+
+### Parameter Map
+
+The `ParameterMapProvider` allows for an array of parameters to be directly injected into the definitions array. This is
+useful for adding runtime parameters, such as the current timestamp or the process PID
+
+```php
+$syringe = new Lexide\Syringe\Syringe();
+$parameterMap = new Lexide\Syringe\Provider\ParameterMapProvider([
+    "startTime" => microtime(true),
+    "processPid" => getmypid(),
+    "guid" => custom_guid_function() 
+])
+
+$syringe->addProvider($parameterMap, "CustomParameterMap");
+```
+
+### Environment Variables
+
+Syringe can import environment variables into the definitions array by using the `EnvironmentVariableProvider`. This 
+takes a map of environment variable name to parameter key and will load the values of the environment variables into the 
+corresponding key.
+
+```php
+$syringe = new Lexide\Syringe\Syringe();
+$envVars = new Lexide\Syringe\Provider\EnvironmentVariableProvider([
+    "USER" => "process.username",
+    "MY_CUSTOM_VAR" => "myCustomVar"
+])
+
+$syringe->addProvider($envVars, "EnvironmentVariableMap");
+```
+
+The variable map used here can also be passed into build options to automatically add this provider to Syringe.
+
+### Custom Providers
+
+Syringe will accept any class that implements the `Lexide\Syringe\Provider\DefinitionProviderInterface` interface as a 
+provider, so it is possible to create custom providers to suit a specific use case:
+
+```php
+
+class MyCustomProvider implements \Lexide\Syringe\Provider\DefinitionProviderInterface
+{
+
+    public function __construct(protected string $namespace = "")
+    {}
+
+    public function getDefinitions(): array
+    {
+        $definitions = [
+            "parameters" => []
+        ];
+        // code to create the definitions array
+        return $definitions;
+    }
+
+    public function getNamespace(): string
+    {
+        // sets the namespace for the definitions if one is required
+        // return an empty string for the root namespace
+        return $this->namespace;
+    }
+
+    public function getName(): string
+    {
+        return "my custom provider"
+    }
+
+}
+```
+
+## Build Options
+
+The `Syringe` class accepts a `Lexide\Syringe\Container\ConfigOptions` instance as the first constructor argument. This
+object contains all the options that Syringe uses when compiling and building container config:
+
+| Option name                   | Type              | Default                           | Description                                                                                                                         |
+|-------------------------------|-------------------|-----------------------------------|-------------------------------------------------------------------------------------------------------------------------------------|
+| `useIncludePath`              | `bool`            | `true`                            | Tells Syringe to use the PHP include path when loading config files                                                                 |
+| `applicationDirectory`        | `string`          | none                              | The absolute path of your application's root directory. Used when loading config files and can be injected as a container parameter |
+| `applicationDirectoryKey`     | `string`          | `app.dir`                         | The parameter name to inject the value of the `applicationDirectory` option into                                                    |
+| `cacheCompiledDefinitions`    | `bool`            | `true`                            | Tells Syringe to check for and set the compiled definitions array in cache                                                          |
+| `compiledDefinitionsCacheKey` | `string`          | `"syringe-container-definitions"` | The key that Syringe uses to check and set the compiled definitions array in cache                                                  |
+| `compiledDefinitionsCacheTtl` | `int`             | `300`                             | The TTL to use when setting the compiled definitions array into cache                                                               |
+| `serviceFactoryClass`         | `string`          | Syringe ServiceFactory class      | The class used to create services from their definitions                                                                            |
+| `containerClass`              | `string`          | Pimple container class            | The class of the service container. Must be a Pimple Container or a subclass                                                        |
+| `usePsrContainer`             | `bool`            | `false`                           | Tells Syringe to wrap the Pimple container in a class that implements the PSR ContainerInterface                                    |
+| `environmentVariableMap`      | `array`           | `[]`                              | A map of environment variable to Syringe parameter name                                                                             |
+| `noStubs`                     | `bool`            | `false`                           | Raise an error id any (unaliased) stub service is detected                                                                          |
+| `skipSyntaxValidation`        | `bool`            | `false`                           | Disable syntax validation, to increase performance                                                                                  |
+| `ignoreCompilationWarnings`   | `bool`            | `false`                           | Filter out compilation warnings                                                                                                     |
+| `ignoreAssertionWarnings`     | `bool`            | `false`                           | Filter out assertion warnings                                                                                                       |
+| `ignoreAllWarnings`           | `bool`            | `false`                           | Filter out all  warnings                                                                                                            |
+| `processAssertions`           | `bool`            | `true`                            | Switch to turn assertions on or off                                                                                                 |
+| `errorLogger`                 | `LoggerInterface` | `null`                            | The error logger to use when reporting errors. Must be an instance implementing the PSR/3 LoggerInterface                           |
+
+Each option can be accessed or set by calling a method of the same name on the ContainerOptions object:
+
+```php
+$options = new ContainerOptions();
+$containerClass = $options->containerClass(); // get the container class from the options
+$options->usePsrContainer(true); // set the value for usePsrContainer
+```
+
+# Definition Files
+
+By default, Syringe allows definition files to be in JSON or YAML format. Additionally, native PHP files can be used 
+so long as they return and array of definitions.
+
+Each file can define parameters, services and tags to inject into the container and these entities can be referenced in
+other areas of configuration. Services can also be extended to add method calls or assign tags and assertions can be 
+defined to ensure that config is set and has the correct values.
 
 ## Parameters
 
-A Parameter is a named, static value, that can be accessed directly from the Container, or injected into other parameters or services.
+A Parameter is a named, static value, that can be accessed directly from the Container, or injected into other parameters 
+or services.
+
 For a config file to define a parameter, it uses the `parameters` key and then states the parameters name and value.
 
 ```yml
 parameters:
-    myParam: "value"
+  myParam: "value"
 ```
 
-Once defined, a parameter can be referenced inside a string value by surrounding its name with the `%` symbol and the parameters value will the be inserted when the the string value is resolved. This can be done in service arguments or in other parameters, like so:
+Once defined, a parameter can be referenced inside a string value by surrounding its name with the `%` symbol and the 
+parameters value will be inserted when the string value is resolved. This can be done in service arguments or in
+other parameters, like so:
 
 ```yml
 parameters:
-    firstName: "Joe"
-    lastName: "Bloggs"
-    fullName: "%firstName% %lastName%"
+  firstName: "Joe"
+  lastName: "Bloggs"
+  fullName: "%firstName% %lastName%"   # fullName resolves to "Joe Bloggs"
 ```
 
 Parameters can have any scalar or array value. Arrays are resolved recursively; you can set an array of strings to a 
@@ -48,149 +258,264 @@ parameter, each of which contain references to other parameters. This works for 
  
 ```yml
 parameters:
-    myFirstValue: "first"
-    mySecondValue: "second"
+  myFirstValue: "first"
+  mySecondValue: "second"
 
-    myList:
-        - "The first value is %myFirstValue%"
-        - "The second value is %mySecondValue%
+  myList:
+    - "The first value is %myFirstValue%"
+    - "The second value is %mySecondValue%"
         
-    myHash:
-        "%myFirstValue%": "%mySecondValue%"
+  myHash:
+    "%myFirstValue%": "%mySecondValue%"
 ```
 
+## Constants and Enums
 
-## Constants
+Quite often, a value set in a PHP constant is required to be injected. Hard coding these value directly into DI config 
+is brittle and requires maintenance to keep in sync, which should be avoided where possible.
 
-Quite often, a value set in a PHP constant is required to be injected. Hard coding these value directly into DI config is brittle and requires maintenance to keep in sync, which should be avoided where possible. 
-Syringe solves this problem by allowing PHP constants to be referenced directly in config, by surrounding the constant name with `^` characters:
+Syringe solves this problem by allowing PHP constants to be referenced directly in config, by surrounding the constant
+name with `^` characters:
 
 ```yml
 parameters:
-    maxIntValue: "^PHP_INT_MAX^"
-    custom: "^MY_CUSTOM_CONSTANT^"
-    classConstant: "^MyModule\\MyService::CLASS_CONSTANT^"
+  maxIntValue: "^PHP_INT_MAX^"
+  custom: "^MY_CUSTOM_CONSTANT^"
+  classConstant: "^MyModule\\MyService::CLASS_CONSTANT^"
 ```
 
-Where class constants are used, you are required to provide the fully qualified class name. As this has to be enclosed inside a string, all forward slashes must be escaped, as in the example.
+Where class constants are used, you are required to provide the fully qualified class name. As this has to be enclosed
+inside a string, all forward slashes must be escaped, as in the example.
+
+Enums are handled in a similar way, using the same syntax. The value that gets injected depends on the type of enum; 
+unit enums will inject the enum symbol directly, backed enums with inject their backed value _unless_ the syringe 
+definition is bounded with `*` characters.
+
+```yml
+parameters:
+  enumSymbol: "^MyEnum::Foo^"
+  enumValue: "^MyBackedEnum::Bar^" # injects MyBackedEnum::Bar->value
+  backedEnumSymbol: "^*MyBackedEnum::Baz*^" # injects the MyBackedEnum::Baz symbol, rather than it's value
+```
+
+The `^* ... *^` syntax will also work on unit enums, but it is unnecessary to do so. 
 
 ## Services
 
-Services are instances of a class that can have other services, parameters or values injected into them. A config file defines services inside the `services` key and gives each entry a `class` key, containing the fully qualified class name to instantiate. 
-For classes which have constructor arguments, these can be specified by setting the `arguments` key to a list of values, parameters or other services, as required by the constructor
+Services are instances of a class that can have other services, parameters or values injected into them. A config file 
+defines services inside the `services` key and gives each entry a `class` key, containing the fully qualified class name
+to instantiate.
+
+For classes which have constructor arguments, these can be specified by setting the `arguments` key to a list of values,
+parameters or other services, as required by the constructor.
 
 ```yml
 services:
-    myService:
-        class: MyModule\MyService
-        arguments:
-            - "first constructor argument"
-            - 12345
-            - false
+  myService:
+    class: MyModule\MyService
+    arguments:
+      - "first constructor argument"
+      - 12345
+      - false
 ```
 
 ### Service injection
 
-Services can have parameters or other services injected into them as method arguments, by referencing a service name prefixed with the `@` character. This is done in one of two ways:
+Services can have parameters or other services injected into them as method arguments, by referencing a service name 
+prefixed with the `@` character. This is done in one of two ways:
 
 #### Constructor injection
 
-Injection can be done when a service is instantiated, by setting references in `arguments` key of a service definition. This is typically done for dependencies which are required.
+Injection can be done when a service is instantiated, by setting references in `arguments` key of a service definition. 
+This is typically done for dependencies which are required.
 
 ```yml
 services:
-    injectable:
-        class: MyModule\MyDependency
+  injectable:
+    class: MyModule\MyDependency
 
-    myService:
-        class: MyModule\MyService
-        arguments:
-            - "@injectable"
-            - "%myParam%"
+  myService:
+    class: MyModule\MyService
+    arguments:
+      - "@injectable"
+      - "%myParam%"
 ```
 
 #### Setter injection
 
-Services can also be injected by calling a method after the service has been instantiated, passing the dependant service in as an argument. This form is useful for optional dependencies.
+Services can also be injected by calling a method after the service has been instantiated, passing the dependant service
+in as an argument. This form is useful for optional dependencies.
 
 ```yml
 services:
-    injectable:
-        class: MyModule\MyDependency
+  injectable:
+    class: MyModule\MyDependency
 
-    myService:
-        class: MyModule\MyService
-        calls:
-            -
-                method: "setInjectable"
-                arguments:
-                    - "@injectable"
+  myService:
+    class: MyModule\MyService
+    calls:
+      - method: "setInjectable"
+        arguments:
+          - "@injectable"
 ```
 
-The `calls` key can be used to run any method on a service, not necessarily one to inject a dependency. They are executed in the order they are defined.
+The `calls` key can be used to run any method on a service, not necessarily one to inject a dependency. They are executed
+in the order they are defined.
 
 ```yml
 services:
-    myService:
-        class: MyModule\MyService
-        calls:
-            - method: "warmCache"
-            - method: "setTimeout"
-              arguments: ["%myTimeout%"]
-            - method: "setLogger"
-              arguments: ["@myLogger"]
+  myService:
+    class: MyModule\MyService
+    calls:
+      - method: "warmCache"
+      - method: "setTimeout"
+        arguments: ["%myTimeout%"]
+      - method: "setLogger"
+        arguments: ["@myLogger"]
 ```
 
 ### Tags
 
-In some cases, you may want to inject all the services of a given type as a method argument. This can be done manually, by building a list of service references in config, but maintaining such a list is cumbersome and time consuming.
+In some cases, you may want to inject all the services of a given type as a method argument. This can be done manually, 
+by building a list of service references in config, but maintaining such a list is cumbersome and time-consuming.
 
-The solution is tags; allowing you to tag a service as being part of a collection and then to inject the whole collection of services in one reference.
+The solution is tags; allowing you to tag a service as being part of a collection and then to inject the whole collection
+of services in one reference.
 
 A tag is referenced by prefixing its name with the `#` character.
 
 ```yml
 services:
-    logHandler1:
-        ...
-        tags:
-            - "logHandlers"
+  logHandler1:
+    #...
+    tags:
+      - tag: "logHandlers"
             
-    logHandler2:
-        ...
-        tags:
-            - "logHandlers"
+  logHandler2:
+    #...
+    tags:
+      - tag: "logHandlers"
             
-    loggerService:
-        ...
-        arguments:
-            - "#logHandlers"
+  loggerService:
+    #...
+    arguments:
+      - "#logHandlers"
 ```
 
-When the tag is resolved, the collection is passed through as a simple numeric array. The parent service will have no knowledge that a tag was used to generate this list.
+When injected into the `loggerService`, the first constructor argument would be a numeric array containing both log handlers.
 
-### Factories
+#### Keys
 
-If you have a number of services to be available that use the same class or interface, it can be advantageous to abstract the creation of these services into a factory class, to aid maintenance and reusability.
-Syringe provides two methods of using factories in this way; via a call to a static method on the factory class, or by calling a method on a separate factory service.
+It is often useful to assign an identifier to a service when it has been tagged, so that the service using it can know
+what it is handling, or select a service by name. This is done by adding a `key` when defining the tag
 
 ```yml
 services:
-    newService1:
-        class: MyModule\MyService
-        factoryClass: MyModule\MyServiceFactory
-        factoryMethod: "createdWithStatic"
-        
-    newService2:
-        class: MyModule\MyService
-        factoryService: "@myServiceFactory"
-        factoryMethod: "createdWithService"
-        
-    myServiceFactory:
-        class: MyModule\MyServiceFactory
+  logHandler1:
+    #...
+    tags:
+      - tag: "logHandlers"
+        key: "default"
+
+  logHandler2:
+    #...
+    tags:
+      - tag: "logHandlers"
+        key: "special"
+
+  loggerService:
+    # ...
+    arguments:
+      - "#logHandlers"
 ```
 
-If the factory methods require arguments, you can pass them through using the `arguments` key, in the same way you would for a normal service or a method call.
+Once injected into a service, the injected array is keyed by these key values; from the example above, the first argument 
+passed to the `loggerService` would be an associative array containing the keys "default" and "special".
+
+#### Ordering
+
+Tag lists can also be sorted, for situations where the order of tagged services is important. Assigning an `order` value
+when defining a tag allows for it's position in the list to be determined.
+
+```yml
+services:
+  processor1:
+    #...
+    tags:
+      - tag: "processors"
+        order: 20
+
+  processor2:
+    #...
+    tags:
+      - tag: "processors"
+        order: 10
+```
+
+Sorting is always done in ascending order so in this example `processor2` would be before `processor1` in the array.
+
+#### Context
+
+In addition, it is possible to add context information to a tag, for situations where a service requires additional 
+metadata about a tagged service.
+
+```yml
+services:
+  myService:
+    # ...
+    tags:
+      - tag: "myTag"
+        context:
+          name: "my-service"
+          package: "my-package"
+          subject: "foo"
+```
+
+This context information is available to a service it is injected into, but only when using a `TagIterator`
+
+#### TagIterator
+
+Tags are resolved to a `Lexide\Syringe\Tag\TagIterator` when a service is built. If the service type hints an argument 
+as an `array`, `mixed` or has no type hint, an array is created from the `TagIterator` by iterating over it and 
+resolving its services. However, it is possible to inject the iterator directly by type hinting one of:
+
+* `iterator`
+* `\Iterator`
+* `\Traversable`
+* `\ArrayAccess`
+* `\Lexide\Syringe\Tag\TagIterator`
+
+This allows for the iterator to be resolved by the service code manually. Tagged services won't be resolved until 
+iterated on, so a TagIterator can be used to lazy load services. Iteration order is preserved and array access is 
+available, for both keyed and numeric tags. In addition, the context information for a service can be accessed by calling
+`->context()` on the iterator, for the current iteration.
+
+### Factories
+
+If you have a number of services to be available that use the same class or interface, it can be advantageous to abstract
+the creation of these services into a factory class, to aid maintenance and reusability.
+
+Syringe provides two methods of using factories in this way; via a call to a static method on the factory class, or by 
+calling a method on a separate factory service.
+
+```yml
+services:
+  newService1:
+    class: MyModule\MyService
+    factoryClass: MyModule\MyServiceFactory
+    factoryMethod: "createdWithStatic" # calls MyServiceFactory::createWithStatic()
+        
+  newService2:
+    class: MyModule\MyService
+    factoryService: "@myServiceFactory"
+    factoryMethod: "createdWithService" # calls $myServiceFactory->createWithService()
+        
+  myServiceFactory:
+    class: MyModule\MyServiceFactory 
+```
+
+If the factory methods require arguments, you can pass them through using the `arguments` key, in the same way you would
+for a normal service or a method call.
 
 ### Service Aliases
 
@@ -199,174 +524,180 @@ This is useful if you deal with other modules and need to use your own version o
 
 ```yml
 # [foo.yml]
+---
 services:
-    default:
-        class: MyModule\DefaultService
-        ...
+  default:
+    class: MyModule\DefaultService
+    #...
 
 # [bar.yml]
+---
 services:
-    default:
-        aliasOf: "@custom"
-        
-    custom:
-        class: MyModule\MyService
-        ...
+  default:
+    aliasOf: "@custom"
+
+  custom:
+    class: MyModule\MyService
+    #...
 ```
 
 ### Abstract Services
 
 Services can often have definitions that are very similar or contain portions that will always be the same. 
-As a method to reduce duplicated config, a service's definition can "extend" a base definition. This has the effect of merging the two definitions together. Any key conflicts take the service's value rather than the one from the base, however the list of calls is merged rather than overwritten. There is no restriction on what keys you can define in the base definition.
-Base definitions have to be marked as `abstract` and cannot be used directly as a service. These abstract definitions can extend other definitions in the same way, similar to how inheritence works in OOP.
+As a method to reduce duplicated config, a service's definition can "extend" an abstract definition. This has the effect of 
+merging the two definitions together. Any key conflicts take the service's value rather than the one from the abstract, 
+however the list of calls is merged rather than overwritten. There is no restriction on what keys you can define in the 
+abstract definition.
+
+Abstract definitions have to be marked as `abstract` and cannot be used directly as a service. These definitions can 
+extend other abstract definitions in the same way, similar to how inheritance works in OOP.
 
 ```yml
 services:
-    loggable:
-        abstract: true
-        calls:
-            - method: "setLogger"
-            - arguments: "@logger"
+  loggable:
+    abstract: true
+    calls:
+      - method: "setLogger"
+        arguments: "@logger"
 
-    myService:
-        class: MyModule\MyService
-        extends: "@loggable"            # this will import the "setLogger" call into this service definition
+  myService:
+    class: MyModule\MyService
+    extends: "@loggable"            # this will import the "setLogger" call into this service definition
         
-    factoriedService:
-        abstract: true
-        extends: "@loggable"
-        factoryClass: MyModule\MyServiceFactory
-        factoryMethod: "create"
+  factoriedService:
+    abstract: true
+    extends: "@loggable"
+    factoryClass: MyModule\MyServiceFactory
+    factoryMethod: "create"
 
-    myFactoriedService:
-        class: MyModule\MyService
-        extends: "@factoriedService"    # imports both the factory config and the "setLogger" call
+  myFactoriedService:
+    class: MyModule\MyService
+    extends: "@factoriedService"    # imports both the factory config and the "setLogger" call
+    arguments:
+      - "factoryArgument"
 ```
 
 ### Private Services
 
-For the vast majority of cases, there is no issue with services being accessed from outside of the current module. In fact this is advantageous as it promotes modular design, reuse of services and code discovery. However, there can be times when data security requires that a service be locked down and to not be available to anything outside of the control of the current module.
-Services can be marked as private by adding the `private` key to their definition:
+For the vast majority of cases, there is no issue with services being accessed from outside the current module. In fact 
+this is advantageous as it promotes modular design, reuse of services and code discovery. However, there can be times 
+when data security requires that a service be locked down and to not be available to anything outside the control of the
+current module.
+
+In such cases, services can be marked as private by adding the `private` key to their definition:
 
 ```yml
 services:
-    myService:
-        ...
-        private: true
+  myService:
+    #...
+    private: true   # the "myService" key will not be available in final container
 ```
 
-Private services will only be available to other services that are defined with the same config alias, usually within the same module.
+Private services will only be available to other services that are defined with the same namespace, usually within the 
+same module.
 
 ### Stubbed Services
 
-In some cases, you may require an application or external library to inject a service that you don't have information on, such as a plugin or adapter that has functionality that doesn't belong in your library.
+In some cases, you may require an application or external library to inject a service that you don't have information 
+on, such as a plugin or adapter that has functionality that doesn't belong in your library.
 
-In order for syringe to handle these situations, you should create a stub service to act as a placeholder which can be aliased later.
-These serve as a hook or API for other libraries to interact with your code through Syringe.
+In order for Syringe to handle these situations, you should create a stub service to act as a placeholder which can be 
+aliased later. These serve as a hook or API for other libraries to interact with your code through Syringe.
 
 ```yml
 # library A
+---
 services:
+  # This service uses the "adapterService" stub
+  aService:
+    #...
+    arguments:
+      - "@adapterService"
 
-    # This service uses the "adapterService" stub
-    aService:
-        ...
-        arguments:
-            - "@adapterService"
-
-    adapterService:
-        stub: true
+  adapterService:
+    stub: true
         
 
 # library B
+---
 services:
 
-    myAdapter:
-        ...
+  myAdapter:
+    #...
         
     # alias "myAdapter" to be the service injected into "library_a.aService"
-    library_a.adapterService:
-        aliasOf: "@myAdapter"
+  library_a.adapterService:
+    aliasOf: "@myAdapter"
         
 ```
 
-By themselves, stub services cannot be accessed or injected; they must have been aliased before the service that uses them can be created.  
+By themselves, stub services cannot be accessed or injected; they must have been aliased before the service that uses 
+them can be created.  
 
 ## Imports
 
-When your object graph becomes large enough, it is often useful to split your configuration into separate files; keeping related parameters and services together. This can be done by using the `imports` key:
+When your definition graph becomes large enough, it is often useful to split your configuration into separate files; 
+keeping related parameters and services together. This can be done by using the `imports` key:
 
 ```yml
 imports:
-    - "loggers.yml"
-    - "users.yml"
-    - "report/orders.yml"
-    - "report/products.yml"
+  - "loggers.yml"
+  - "users.yml"
+  - "report/orders.yml"
+  - "report/products.yml"   # File paths are resolved relative to the file they are defined in.
     
 services:
-    ...
+  # ...
 ```
 
-If any imported files contain duplicated keys, the file that is further down the list wins. As the parent file is always processed last, its services and parameters always take precedence over the imported config.
+If any imported files contain duplicated keys, the file that is further down the list wins. As the parent file is always
+processed last, its services and parameters always take precedence over the imported definitions.
 
 ```yml
 # [foo.yml]
+---
 parameters:
-    baz: "from foo"
+  baz: "from foo"
 
 # [bar.yml]
+---
 imports: 
-    - "foo.yml"
+  - "foo.yml"
     
 parameters:
-    baz: "from bar"
+  baz: "from bar"
     
 # when bar.yml is loaded into Syringe, the "baz" parameter will have a value of "from bar"
 ```
 
-## Environment Variables
-
-If required, Syringe allows you to set environment variables on the server that will be imported at runtime. This can be used to set different parameter values for local development machines and production servers, for example.
-Any environment variable prefixed with `SYRINGE__` will be imported as a parameter:
-
-## Config Aliases and Namespacing
-
-When dealing with a large object graph, conflicting service names can become an issue. To avoid this, Syringe allows you to set an "alias" or namespace for a config file. Within the file, services can be referenced as normal, but files which use different aliases or no alias need to prefix the service name with the alias.
-This allows you to compartmentalise your DI config for better organisation and to promote modular coding.
-
-For example, the two config files, `foo.yml` and `bar.yml` can be given aliases when setting up the config files to create a Container from:
-
-```php
-$configFiles = [
-  "foo_alias" => "foo.yml",
-  "bar_alias" => "bar.yml"
-];
-```
-
-`foo.yml` could defined a service, `fooOne`, which injected another service in the same file, `fooTwo`, as normal.
-However, if a service in `bar.yml` wanted to inject `fooTwo`, it would have to use its full service reference `@foo_alias.fooTwo`. Likewise if `fooOne` wanted to inject `barOne` from `bar.yml` it would have to use `@bar_alias.barOne` as the service reference.
-
 ## Extensions
 
-There can be times where you need to call setters on a dependent module's services, in order to inject your own dependent service as a replacement for the module's default one.
-In order to do this, you need to use the `extensions` key. This allows you to specify the service and provide a list of calls to make on it, essentially appending them to the service's own `calls` key
+There can be times when you need to call setters on a dependent module's services, in order to inject services from your
+application config into it, or to add that a dependent module's service to a tag defined in your application.
+In order to do this, you need to use the `extensions` key. This allows you to specify the service and provide a list of 
+calls to make on it or tags to add it to, essentially appending them to the service's own definition.
 
 ```yml
-# [foo.yml, aliased with "foo_alias"]
+# [foo.yml, aliased with "foo_namespace"]
+---
 services:
-    myService:
-        class: MyModule\MyService
-        ...
+  myService:
+    class: MyModule\MyService
+    #...
 
 # [bar.yml]
+---
 services:
-    myCustomLogger:
-        ...
+  myLogger:
+    #...
         
 extensions:
-    foo_alias.myService:
-        - method: "addLogger"
-          arguments: "@myCustomLogger"
+  foo_namespace.myService:
+    calls: 
+      - method: "addLogger"
+        arguments: "@myLogger"
+    tags:
+      - tag: "myApplicationTag"
 ```
 
 ## Reference characters
@@ -380,183 +711,18 @@ In order to identify references, the following characters are used:
 
 ## Conventions
 
-Syringe does not enforce naming or style conventions, with one exception. A service's name can be any you like, as long as it does not start with one of the reference characters, but a config alias is always seperated from a service name with a `.`, e.g. `myAlias.serviceName`. For this reason it can be useful to use `.` as a separator in your own service names, to "namespace" related services and parameters:
+Syringe does not enforce naming or style conventions, with one exception. A service's name can be any you like (as long 
+as it does not start with one of the reference characters) but a config namespace is always separated from a service name
+with a `.`, e.g. `myNamespace.serviceName`. For this reason it can be useful to use `.` as a separator in your own 
+service names, to "namespace" related services and parameters:
 
 ```yml
 parameters:
-    database.host: "..."
-    database.username: "..."
-    database.password: "..."
+  database.host: "..."
+  database.username: "..."
+  database.password: "..."
     
 services:
-    database.client:
-        ...
+  database.client:
+    #...
 ```
-
-# Advanced Usage
-
-## The ContainerBuilder
-
-The `ContainerBuilder` class is the main component of Syringe. It has several configuration options that allow you to customise the containers it builds.
-
-### Base paths for config files
-
-In order to use configuration in a particular file, its filepath must be passed to the `ContainerBuilder`, which will use the loading system to convert a file into a PHP array. Syringe uses absolute paths when loading files, but this is obviously not ideal when you're passing config filepaths to the `ContainerBuilder`. 
-
-In order to get around this, the `ContainerBuilder` allows you to set a path or collection of paths to use as a base, so you can use relative filepaths when setting it up. For example, for a config file with absolute path of `/var/www/app/config/syringe.yml`, you could set a base path of `/var/www/app` and use `config/syringe.yml` as the relative filepath.
-
-```php
-$basePath = "/var/www/app";
-$resolver = new Lexide\Syringe\ReferenceResolver();
-
-$builder = new Lexide\Syringe\ContainerBuilder($resolver, [$basePath]);
-$builder->addConfigfile("config/syringe.yml");
-...
-```
-
-If you use several base paths, Syringe will look for a config file in each base path in turn, so the order is important.
-
-```php
-$basePaths = [
-    "my-dir/config",    // both these paths contain a file called "foo.yml"
-    "my-dir/app"
-];
-$resolver = new Lexide\Syringe\ReferenceResolver();
-
-$builder = new Lexide\Syringe\ContainerBuilder($resolver, $basePaths);
-$builder->addConfigfile("foo.yml");     // will load my-dir/config/foo.yml, as that is the first base path in the list
-```
-
-### Application root directory
-
-If you have services that deal with files, it can be very useful to have the base directory of the application as a parameter in DI config, so you can be sure any relative paths you use are correct.
-The `ContainerBuilder` allows you to set the base directory and the parameter name at runtime:
-
-```php
-$builder->setApplicationRootDirectory("my/application/directory", "myParameterName");
-```
-
-If no key is passed, the default parameter name is `app.dir`.
-
-### Container class
-
-Some projects that use Pimple, such a [Silex](http://silex.sensiolabs.org/), extend the `Container` class to add functionality to their API. Syringe can create custom containers in this way by allowing you to set the container class it instantiates:
-
-```php
-$builder->setContainerClass(Silex\Application::class);
-$app = $builder->createContainer(); // returns a new Silex Application
-```
-
-### Loaders
-
-Syringe can support any data format that can be translated into a nested PHP array. Each config file is processed by the loader system, which is comprised of a series of `Loader` objects, each handling a single data format, that take a file's contents and decode it into an array of configuration.
-
-By default the `ContainerBuilder` has no loaders, so you need to add at least one before a container can be built:
-
-```php
-$builder->addLoader(new Lexide\Syringe\Loader\YamlLoader());
-```
-
-#### Custom loaders
-
-By default Syringe supports YAML and JSON data formats for the configurations files, but it is possible to use any format that can be translated into a nested PHP array.
-The translation is done by a `Loader`; a class which takes a filepath, reads the file and decodes the data. 
-
-To create a `Loader` for your chosen data format, the class needs to implement the `LoaderInterface` and state what its name is and what file extensions it supports. For example, a hypothetical XML `Loader` would look something like this:
-
-```php
-use Lexide\Syringe\Loader\LoaderInterface;
-
-class XmlLoader implements LoaderInterface
-{
-    public function getName()
-    {
-        return "XML Loader";
-    }
-    
-    public function supports($file)
-    {
-        return pathinfo($file, PATHINFO_EXTENSION) == "xml";
-    }
-    
-    public function loadFile($file)
-    {
-        // load and decode the file, returning the configuration array
-    }
-}
-```
-
-Once created, such a loader can be used by adding it to the `ContainerBuilder` in the normal way.
-
-### Populating a Container
-
-In addition to creating a new container, the `ContainerBuilder` can also populate an existing container that has been created elsewhere, with the `populateContainer` method:
-
-```php
-$container = new Pimple\Container();
-$builder->populateContainer($contianer);
-```
-
-### Method reference
-
-The `ContainerBuilder` class has the following methods available:
-
-#### Constructor
-
-* `__construct(Lexide\Syringe\ReferenceResolver $resolver, array $configPaths = [])`
-  
-  Constructs a new `ContainerBuilder` instance, with each $configPath set using the `addConfigPath` method
-
-#### Container
-
-* `createContainer()`
-
-  Create a brand new container populated with all services defined in the configuration files that have been loaded into the `ContainerBuilder`
-* `populateContainer(Pimple\Container $container)`
-
-  Populate an existing container with services as per `createContainer`
-* `setContainerClass($className)`
-
-  Sets the class which will be instantiated when using `createContainer`
-
-#### Config Files
-
-* `addConfigFile($file, $alias = "")`
-
-  Adds a new file path to load configuration from, optionally with an alias to prefix its keys with
-* `addConfigFiles(array $files)`
-
-  Adds several config files in one go. Elements with numeric keys are added without an alias, otherwise the key is used as the alias for that file:
-```php
-  $files = [
-      "file1.yml",
-      "alias_two" => "file2.yml",
-      "file3.yml",
-      "alias_four" => "file4.yml"
-  ]
-```
-* `addConfigPath($path)`
-
-  Register a path to use as a base for relative config filepaths
-  
-#### Loaders
-
-* `addLoader(Lexide\Syringe\Loader\LoaderInterface $loader)`
-
-  Registers a loader to add support for a specific data format
-* `removeLoader($name)`
-
-  Remove a loader based on its name
-* `removeLoaderByFile($file)`
-
-  Remove any loader that supports this file
-  
-#### Misc
-
-* `setApplicationRootDirectory($path, $key = "")`
-
-  Sets the directory to use as the root for this application, useful when processing relative file paths. The parameter name will be the $key, or `app.dir` if $key is empty
-
-# Credits
-
-Written by Danny Smart (dannysmart@lexide.com).

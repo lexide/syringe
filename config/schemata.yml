@@ -1,0 +1,221 @@
+schemata:
+  syringe:
+    type: "object"
+    children:
+      imports:
+        type: "list"
+        empty: false
+        element:
+          type: "string"
+      parameters:
+        oneOf:
+          - type: "object"
+            element:
+              type: "any"
+          - type: "any"
+            warning: "The use of an empty parameters key is deprecated. Please remove the key if there are no parameters"
+            empty: true
+      services:
+        oneOf:
+          - type: "object"
+            element:
+              type: "@service"
+          - type: "any"
+            warning: "The use of an empty services key is deprecated. Please remove the key if there are no services"
+            empty: true
+      extensions:
+        type: "object"
+        empty: false
+        element:
+          oneOf:
+            - type: "object"
+              empty: false
+              children:
+                calls:
+                  type: "@calls"
+                tags:
+                  type: "@tags"
+              element:
+                type: "object"
+                empty: false
+                warning: "Using a key for extension calls is deprecated. Please convert the extension to an object with a 'calls' key"
+                children:
+                  method:
+                    type: "string"
+                  arguments:
+                    type: "@arguments"
+                requiredChildren:
+                  method: true
+            - type: "list"
+              warning: "The use of numeric arrays for extension calls is deprecated. Please prefix with the 'calls' key"
+              empty: false
+              element:
+                type: "@call"
+      assertions:
+        type: "list"
+        element:
+          type: "object"
+          children:
+            reference:
+              type: "string"
+            checks:
+              type: "list"
+              element:
+                type: "object"
+                requiredChildren:
+                  assert: true
+                children:
+                  assert:
+                    type: "string"
+                  value:
+                    type:
+                      - "string"
+                      - "list"
+                      - "@schemataDefinition"
+  service:
+    type: "object"
+    requiredChildren:
+      class:
+        ifNot:
+          - "abstract"
+          - "aliasOf"
+          - "stub"
+      factoryMethod:
+        if:
+          - "factoryService"
+          - "factoryClass"
+    children:
+      class:
+        type: "string"
+        empty: false
+      arguments:
+        type: "@arguments"
+      calls:
+        type: "@calls"
+      tags:
+        type: "@tags"
+      factoryService:
+        type: "serviceReference"
+      factoryClass:
+        type: "string"
+        empty: false
+      factoryMethod:
+        type: "string"
+        empty: false
+      abstract:
+        type: "bool"
+      extends:
+        type: "serviceReference"
+      stub:
+        type: "bool"
+      aliasOf:
+        type: "serviceReference"
+      private:
+        type: "bool"
+  arguments:
+    oneOf:
+      - type: "list"
+        element:
+          type: "any"
+      - type: "object"
+        warning: "The use of named arguments is not recommended"
+        element:
+          type: "any"
+      - type: "array"
+        warning: "The use of named arguments is not recommended"
+        element:
+          type: "any"
+  calls:
+    oneOf:
+      - type: "list"
+        element:
+          type: "@call"
+      - type: "object"
+        warning: "The use of named calls is not recommended"
+        element:
+          type: "@call"
+  call:
+    type: "object"
+    requiredChildren:
+      method: true
+    children:
+      method:
+        type: "string"
+      arguments:
+        type: "@arguments"
+  tags:
+    oneOf:
+      - type: "list"
+        empty: false
+        element:
+          oneOf:
+            - type: "string"
+            - type: "object"
+              requiredChildren:
+                tag: true
+              children:
+                tag:
+                  type: "string"
+                key:
+                  type: "string"
+                order:
+                  type: "number"
+                context:
+                  type: "object"
+                  empty: false
+                  element:
+                    type:
+                      - "string"
+                      - "number"
+                      - "bool"
+      - type: "object"
+        warning: "Using key/value tag definitions is deprecated. Please use a list of objects with 'value' or 'order' keys if you need to add context to a tag"
+        element:
+          type:
+            - "string"
+            - "number"
+  schemataDefinition:
+    type: "object"
+    children:
+      type:
+        type: "string"
+      warning:
+        type: "string"
+      empty:
+        type: "bool"
+      element:
+        type: "@schemataDefinition"
+        empty: false
+      children:
+        type: "object"
+        empty: false
+        element:
+          type: "@schemataDefinition"
+      oneOf:
+        type: "list"
+        empty: false
+        element:
+          type: "@schemataDefinition"
+      requiredChildren:
+        type: "object"
+        element:
+          oneOf:
+            - type: "bool"
+            - type: "object"
+              requiredChildren:
+                if:
+                  ifNot: "ifNot"
+                ifNot:
+                  ifNot: "if"
+              children:
+                if:
+                  type: "@condition"
+                ifNot:
+                  type: "@condition"
+  condition:
+    oneOf:
+      - type: "string"
+      - type: "list"
+        empty: false
+        element:
+          type: "string"

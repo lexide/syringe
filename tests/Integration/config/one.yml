@@ -1,0 +1,32 @@
+
+parameters:
+  import.one: true
+
+  # parameter substitution
+  url: "%url.protocol%://%url.domain%/%url.path%?%url.query%"
+  url.protocol: "https"
+  url.domain: "%url.subdomain%.example.com"
+  url.subdomain: "test"
+  url.path: "a/short/path"
+  url.query: "foo=bar&baz=fiz"
+
+  # array substitution
+  config:
+    - one: "%config.one%"
+      two: "%config.two%"
+      three: "%config.three%"
+      "%config.key%":
+        - "%config.five%"
+        - "%config.six%"
+
+  config.one: "one"
+  config.two: "two"
+  config.three: "three"
+  config.key: "four"
+  config.five: "five"
+  config.six: "six"
+
+  parameter.escaping: "The parameter character \\% can be escaped"
+
+  override: "NOT THIS"
+  importOverride: "NOT THIS"

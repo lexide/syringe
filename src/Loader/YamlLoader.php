@@ -8,13 +8,13 @@ use Symfony\Component\Yaml\Parser;
 
 class YamlLoader implements LoaderInterface
 {
-    protected $useSymfony = false;
+
+    protected bool $useSymfony = false;
 
     /**
-     * YamlLoader constructor.
      * @param bool $forceSymfony
      */
-    public function __construct($forceSymfony = false)
+    public function __construct(bool $forceSymfony = false)
     {
         if ($forceSymfony || !function_exists("yaml_parse")) {
             $this->useSymfony = true;
@@ -24,7 +24,7 @@ class YamlLoader implements LoaderInterface
     /**
      * {@inheritDoc}
      */
-    public function getName()
+    public function getName(): string
     {
         return "YAML Loader";
     }
@@ -32,16 +32,16 @@ class YamlLoader implements LoaderInterface
     /**
      * {@inheritDoc}
      */
-    public function supports($file)
+    public function supports(string $file): bool
     {
         return (in_array(pathinfo($file, PATHINFO_EXTENSION), ["yml", "yaml"]));
     }
 
     /**
      * {@inheritDoc}
-     * @throws \Lexide\Syringe\Exception\LoaderException
+     * @throws LoaderException
      */
-    public function loadFile($file)
+    public function loadFile(string $file): array
     {
         if (!file_exists($file)) {
             throw new LoaderException("Requested YAML file '{$file}' doesn't exist");
@@ -54,13 +54,15 @@ class YamlLoader implements LoaderInterface
                 // Apparently parser keeps references to the things it parses? As such, we want to create a new parser
                 // each time (uch)
                 $parser = new Parser();
-                return $parser->parse($contents);
+                $data = $parser->parse($contents);
             } catch (ParseException $e) {
-                throw new LoaderException("Could not load the YAML file '{$file}': ".$e->getMessage());
+                throw new LoaderException("Could not load the YAML file '{$file}'", 0, $e);
             }
+
+        } else {
+            $data = yaml_parse($contents);
         }
 
-        $data = yaml_parse($contents);
         if (!is_array($data)) {
             throw new LoaderException("Requested YAML file '{$file}' does not parse to an array");
         }

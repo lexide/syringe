@@ -1,0 +1,104 @@
+imports:
+  - "one.yml"
+  - "two.yml"
+
+parameters:
+  override: "THIS"
+
+services:
+
+  service.tagger:
+    abstract: true
+    tags:
+      - "taggedServices"
+
+  service.one:
+    extends: "@service.tagger"
+    class: Lexide\Syringe\Test\Integration\MockService
+    arguments:
+      - 1
+    calls:
+      - method: "addService"
+        arguments:
+          - "private"
+          - "@service.private"
+    tags:
+      - tag: "mockServices"
+        order: 3
+
+  service.private:
+    extends: "@service.tagger"
+    class: Lexide\Syringe\Test\Integration\MockService
+    private: true
+    arguments:
+      - 2
+    tags:
+      - tag: "mockServices"
+        order: 1
+
+  service.two:
+    aliasOf: "@service.private"
+
+  service.three:
+    extends: "@service.tagger"
+    class: Lexide\Syringe\Test\Integration\MockService
+    arguments:
+      - 3
+    calls:
+      - method: "addService"
+        arguments:
+          - "alias"
+          - "@service.two"
+    tags:
+      - tag: "mockServices"
+        order: 4
+
+  service.four:
+    class: Lexide\Syringe\Test\Integration\MockService
+    arguments:
+      - 4
+    calls:
+      - method: "setServices"
+        arguments:
+          - "#mockServices"
+    tags:
+      - tag: "keyedServices"
+        key: "four"
+
+  service.five:
+    class: Lexide\Syringe\Test\Integration\MockService
+    factoryService: "@service.one"
+    factoryMethod: "create"
+    arguments:
+      - 5
+    tags:
+      - tag: "mockServices"
+        order: 5
+      - tag: "keyedServices"
+        key: "five"
+
+  service.six:
+    class: Lexide\Syringe\Test\Integration\MockService
+    factoryClass: Lexide\Syringe\Test\Integration\MockService
+    factoryMethod: "staticCreate"
+    arguments:
+      - 6
+    tags:
+      - tag: "mockServices"
+        order: 2
+      - tag: "keyedServices"
+        key: "six"
+
+  alpha.service.stub:
+    aliasOf: "@service.two"
+
+extensions:
+  alpha.service.extendable:
+    calls:
+      - method: "addService"
+        arguments:
+          - "alphaStub"
+          - "@alpha.service.stub"
+    tags:
+      - tag: "extendedTag"
+        key: "extended"

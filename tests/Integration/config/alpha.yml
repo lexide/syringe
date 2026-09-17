@@ -1,0 +1,11 @@
+parameters:
+  import.four: true
+
+services:
+  service.stub:
+    stub: true
+
+  service.extendable:
+    class: Lexide\Syringe\Test\Integration\MockService
+    arguments:
+      - 5
