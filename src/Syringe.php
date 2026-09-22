@@ -152,7 +152,7 @@ class Syringe
      */
     public function build(): Container|ContainerInterface
     {
-        if ($this->options->cacheCompiledDefinitions()) {
+        if ($this->options->cacheCompiledDefinitions() && !$this->options->forceRebuild()) {
             $compiledDefinitions = apcu_fetch($this->options->compiledDefinitionsCacheKey());
         }
 
