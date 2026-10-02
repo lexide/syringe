@@ -165,15 +165,16 @@ class Syringe
             $compiledDefinitions = apcu_fetch($this->options->compiledDefinitionsCacheKey());
         }
 
+        $errorLogger = $this->options->errorLogger();
+        $ignoreWarnings = $this->options->ignoreCompilationWarnings();
+        $skipValidation = $this->options->skipSyntaxValidation();
+
+        $this->processOptions();
+
+        $loader = $this->getDefinitionLoader($errorLogger);
+        $compiler = $this->getCompiler($errorLogger);
+
         if (empty($compiledDefinitions)) {
-
-            $errorLogger = $this->options->errorLogger();
-            $ignoreWarnings = $this->options->ignoreCompilationWarnings();
-            $skipValidation = $this->options->skipSyntaxValidation();
-
-            $this->processOptions();
-
-            $loader = $this->getDefinitionLoader($errorLogger);
 
             $definitions = $loader->loadDefinitions(
                 $this->configFiles,
@@ -182,7 +183,6 @@ class Syringe
                 $ignoreWarnings
             );
 
-            $compiler = $this->getCompiler($errorLogger);
             $compiledDefinitions = $compiler->compile($definitions, $ignoreWarnings);
 
             if ($this->options->cacheCompiledDefinitions()) {
@@ -192,20 +192,19 @@ class Syringe
                     $this->options->compiledDefinitionsCacheTtl()
                 );
             }
+        }
 
-            if (!empty($this->runtimeProviders)) {
-                $runtimeDefinitions = $loader->loadDefinitions(
-                    [],
-                    $this->runtimeProviders,
-                    $skipValidation,
-                    $ignoreWarnings
-                );
-                $compiledDefinitions = array_replace_recursive(
-                    $compiledDefinitions,
-                    $compiler->compile($runtimeDefinitions, $ignoreWarnings)
-                );
-            }
-
+        if (!empty($this->runtimeProviders)) {
+            $runtimeDefinitions = $loader->loadDefinitions(
+                [],
+                $this->runtimeProviders,
+                $skipValidation,
+                $ignoreWarnings
+            );
+            $compiledDefinitions = array_replace_recursive(
+                $compiledDefinitions,
+                $compiler->compile($runtimeDefinitions, $ignoreWarnings)
+            );
         }
 
         $containerBuilder = $this->getContainerBuilder();
