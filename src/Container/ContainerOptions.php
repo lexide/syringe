@@ -14,6 +14,7 @@ class ContainerOptions
         "cacheCompiledDefinitions" => true,
         "compiledDefinitionsCacheKey" => "syringe-container-definitions",
         "compiledDefinitionsCacheTtl" => 300,
+        "forceRebuild" => false,
         "applicationDirectory" => null,   // no default, needs to be set
         "applicationDirectoryKey" => "app.dir",
         "containerClass" => Container::class,
@@ -116,6 +117,15 @@ class ContainerOptions
     public function compiledDefinitionsCacheTtl(?int $cacheTtl = null): int
     {
         return $this->accessOption("compiledDefinitionsCacheTtl", $cacheTtl);
+    }
+
+    /**
+     * @param ?bool $rebuild
+     * @return bool
+     */
+    public function forceRebuild(?bool $rebuild = null): bool
+    {
+        return $this->accessOption("forceRebuild", $rebuild);
     }
 
     /**
