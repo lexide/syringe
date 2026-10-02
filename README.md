@@ -124,13 +124,16 @@ useful for adding runtime parameters, such as the current timestamp or the proce
 
 ```php
 $syringe = new Lexide\Syringe\Syringe();
-$parameterMap = new Lexide\Syringe\Provider\ParameterMapProvider([
-    "startTime" => microtime(true),
-    "processPid" => getmypid(),
-    "guid" => custom_guid_function() 
-])
+$parameterMap = new Lexide\Syringe\Provider\ParameterMapProvider(
+    [
+        "startTime" => microtime(true),
+        "processPid" => getmypid(),
+        "guid" => custom_guid_function() 
+    ],
+    "CustomParameterMap"
+)
 
-$syringe->addProvider($parameterMap, "CustomParameterMap");
+$syringe->addProvider($parameterMap, );
 ```
 
 ### Environment Variables
@@ -146,7 +149,7 @@ $envVars = new Lexide\Syringe\Provider\EnvironmentVariableProvider([
     "MY_CUSTOM_VAR" => "myCustomVar"
 ])
 
-$syringe->addProvider($envVars, "EnvironmentVariableMap");
+$syringe->addProvider($envVars);
 ```
 
 The variable map used here can also be passed into build options to automatically add this provider to Syringe.
@@ -188,6 +191,27 @@ class MyCustomProvider implements \Lexide\Syringe\Provider\DefinitionProviderInt
 }
 ```
 
+### Runtime Providers
+
+There can be situations where parameters are required to be added to a container, the value for which is depends on the 
+current time, is extracted from request data or otherwise needs to be different for each invocation. If caching is 
+turned on, these values would be cached alongside the other parameters and services, meaning that values would be reused.
+
+To avoid this, Syringe allows for a provider to be added with a flag that marks it as being excluded from cache. These 
+providers are added to the definitions array after it has been pulled from cache (or freshly compiled);
+
+```php
+
+$parameterMap = new Lexide\Syringe\Provider\ParameterMapProvider(
+    [
+        "startTime" => microtime(true)
+    ],
+    "RuntimeParameterMap"
+)
+
+$syringe->addProvider($parameterMap, true); // this second argument marks the provider as being runtime
+```
+
 ## Build Options
 
 The `Syringe` class accepts a `Lexide\Syringe\Container\ConfigOptions` instance as the first constructor argument. This
@@ -201,6 +225,7 @@ object contains all the options that Syringe uses when compiling and building co
 | `cacheCompiledDefinitions`    | `bool`            | `true`                            | Tells Syringe to check for and set the compiled definitions array in cache                                                          |
 | `compiledDefinitionsCacheKey` | `string`          | `"syringe-container-definitions"` | The key that Syringe uses to check and set the compiled definitions array in cache                                                  |
 | `compiledDefinitionsCacheTtl` | `int`             | `300`                             | The TTL to use when setting the compiled definitions array into cache                                                               |
+| `forceRebuild`                | `bool`            | `false`                           | Bypasses reading the cache, but sets the compiled definitions to cache if caching is enabled                                        |
 | `serviceFactoryClass`         | `string`          | Syringe ServiceFactory class      | The class used to create services from their definitions                                                                            |
 | `containerClass`              | `string`          | Pimple container class            | The class of the service container. Must be a Pimple Container or a subclass                                                        |
 | `usePsrContainer`             | `bool`            | `false`                           | Tells Syringe to wrap the Pimple container in a class that implements the PSR ContainerInterface                                    |
