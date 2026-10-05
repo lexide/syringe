@@ -23,9 +23,9 @@ trait ReportErrorsTrait
         }
 
         if ($ignoreWarnings) {
-            $errors = array_filter($errors, function ($error) {
+            $errors = array_values(array_filter($errors, function ($error) {
                 return $error->getType() != "warning";
-            });
+            }));
         }
         if (!empty($errors)) {
             if ($this->errorLogger instanceof LoggerInterface) {
