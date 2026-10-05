@@ -67,6 +67,8 @@ class Syringe
 
     protected array $providers = [];
 
+    protected array $runtimeProviders = [];
+
     protected ?ReferenceHelper $referenceHelper = null;
 
     protected ?ErrorHelper $errorHelper = null;
@@ -124,25 +126,32 @@ class Syringe
 
     /**
      * @param DefinitionProviderInterface $provider
+     * @param bool $runtime
      */
-    public function addProvider(DefinitionProviderInterface $provider): void
+    public function addProvider(DefinitionProviderInterface $provider, bool $runtime = false): void
     {
-        $this->providers[] = $provider;
+        if ($runtime) {
+            $this->runtimeProviders[] = $provider;
+        } else {
+            $this->providers[] = $provider;
+        }
     }
 
     /**
      * @param array $providers
+     * @param bool $runtime
      */
-    public function addProviders(array $providers): void
+    public function addProviders(array $providers, bool $runtime = false): void
     {
         foreach ($providers as $provider) {
-            $this->addProvider($provider);
+            $this->addProvider($provider, $runtime);
         }
     }
 
     public function resetProviders(): void
     {
         $this->providers = [];
+        $this->runtimeProviders = [];
     }
 
     /**
@@ -152,27 +161,28 @@ class Syringe
      */
     public function build(): Container|ContainerInterface
     {
-        if ($this->options->cacheCompiledDefinitions()) {
+        if ($this->options->cacheCompiledDefinitions() && !$this->options->forceRebuild()) {
             $compiledDefinitions = apcu_fetch($this->options->compiledDefinitionsCacheKey());
         }
 
+        $errorLogger = $this->options->errorLogger();
+        $ignoreWarnings = $this->options->ignoreCompilationWarnings();
+        $skipValidation = $this->options->skipSyntaxValidation();
+
+        $this->processOptions();
+
+        $loader = $this->getDefinitionLoader($errorLogger);
+        $compiler = $this->getCompiler($errorLogger);
+
         if (empty($compiledDefinitions)) {
-
-            $errorLogger = $this->options->errorLogger();
-            $ignoreWarnings = $this->options->ignoreCompilationWarnings();
-
-            $this->processOptions();
-
-            $loader = $this->getDefinitionLoader($errorLogger);
 
             $definitions = $loader->loadDefinitions(
                 $this->configFiles,
                 $this->providers,
-                $this->options->skipSyntaxValidation(),
+                $skipValidation,
                 $ignoreWarnings
             );
 
-            $compiler = $this->getCompiler($errorLogger);
             $compiledDefinitions = $compiler->compile($definitions, $ignoreWarnings);
 
             if ($this->options->cacheCompiledDefinitions()) {
@@ -182,6 +192,19 @@ class Syringe
                     $this->options->compiledDefinitionsCacheTtl()
                 );
             }
+        }
+
+        if (!empty($this->runtimeProviders)) {
+            $runtimeDefinitions = $loader->loadDefinitions(
+                [],
+                $this->runtimeProviders,
+                $skipValidation,
+                $ignoreWarnings
+            );
+            $compiledDefinitions = array_replace_recursive(
+                $compiledDefinitions,
+                $compiler->compile($runtimeDefinitions, $ignoreWarnings)
+            );
         }
 
         $containerBuilder = $this->getContainerBuilder();
