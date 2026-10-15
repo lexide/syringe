@@ -94,7 +94,7 @@ class NamespaceNormaliser
                 ) {
                     // we have a key collision and the key is local to this namespace
                     // externally set keys take precedence
-                    break;
+                    continue;
                 }
 
                 $newParameters[$namespacedParameter] = $value;
