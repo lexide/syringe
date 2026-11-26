@@ -157,7 +157,7 @@ class ReferenceValidator
                     );
 
                     // save the factory class, so we can check the method later
-                    $factoryClass = $definitions["services"][$serviceKey]["class"];
+                    $factoryClass = $definitions["services"][$serviceKey]["class"] ?? "";
                 }
             }
 
